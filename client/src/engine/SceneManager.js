@@ -2,6 +2,14 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
 
+import { GameObject, Component, Time } from './core/index.js';
+import { PhysicsManager, PhysicsMaterial, Rigidbody, BoxCollider, SphereCollider, CapsuleCollider, MeshCollider } from './physics/index.js';
+import { MeshFilter, MeshRenderer, Material, PBRMaterial } from './rendering/index.js';
+import { ResourceManager, ModelLoader } from './resources/index.js';
+import { AudioManager, AudioSource, AudioListener, AudioClip } from './audio/index.js';
+import { NetworkTransform } from './network/index.js';
+import { Events, EventTypes } from './events/index.js';
+
 export class SceneManager {
   constructor(container, onChangeCallback) {
     this.container = container;
@@ -16,12 +24,22 @@ export class SceneManager {
     this.mouse = new THREE.Vector2();
     
     this.objects = [];
+    this.gameObjects = [];
     this.selectedObject = null;
     this.objectIdCounter = 1;
     
     this.isDragging = false;
     this.currentTool = 'select';
     this.isTransformMode = false;
+    
+    this.physicsManager = null;
+    this.physicsEnabled = true;
+    
+    this.resourceManager = null;
+    this.modelLoader = null;
+    
+    this.audioManager = null;
+    this.mainAudioListener = null;
     
     this.materialPresets = [
       { name: '红色塑料', color: '#ff4444', roughness: 0.4, metalness: 0.1 },
@@ -76,6 +94,7 @@ export class SceneManager {
       this.scene.add(this.transformControls);
       console.log('TransformControls 初始化成功');
 
+      this.initManagers();
       this.setupLighting();
       this.setupGround();
       this.createDefaultObjects();
@@ -87,6 +106,71 @@ export class SceneManager {
       console.error('SceneManager 初始化失败:', error);
       throw error;
     }
+  }
+
+  initManagers() {
+    this.physicsManager = PhysicsManager.instance;
+    this.physicsManager.gravity = { x: 0, y: -9.82, z: 0 };
+    console.log('物理系统初始化完成');
+
+    this.resourceManager = ResourceManager.instance;
+    this.modelLoader = new ModelLoader();
+    console.log('资源管理系统初始化完成');
+
+    this.audioManager = AudioManager.instance;
+    const cameraGameObject = new GameObject('MainCamera');
+    this.mainAudioListener = cameraGameObject.addComponent(AudioListener);
+    console.log('音频系统初始化完成');
+
+    this._setupEventSubscriptions();
+  }
+
+  _setupEventSubscriptions() {
+    Events.subscribe(EventTypes.COLLISION_ENTER, (event) => {
+      this._onCollisionEnter(event.data);
+    });
+    
+    Events.subscribe(EventTypes.COLLISION_STAY, (event) => {
+      this._onCollisionStay(event.data);
+    });
+    
+    Events.subscribe(EventTypes.COLLISION_EXIT, (event) => {
+      this._onCollisionExit(event.data);
+    });
+    
+    Events.subscribe(EventTypes.TRIGGER_ENTER, (event) => {
+      this._onTriggerEnter(event.data);
+    });
+    
+    Events.subscribe(EventTypes.TRIGGER_STAY, (event) => {
+      this._onTriggerStay(event.data);
+    });
+    
+    Events.subscribe(EventTypes.TRIGGER_EXIT, (event) => {
+      this._onTriggerExit(event.data);
+    });
+  }
+
+  _onCollisionEnter(data) {
+    console.log('碰撞开始:', data.gameObject?.name, '与', data.other?.name);
+  }
+
+  _onCollisionStay(data) {
+  }
+
+  _onCollisionExit(data) {
+    console.log('碰撞结束:', data.gameObject?.name, '与', data.other?.name);
+  }
+
+  _onTriggerEnter(data) {
+    console.log('触发器进入:', data.gameObject?.name);
+  }
+
+  _onTriggerStay(data) {
+  }
+
+  _onTriggerExit(data) {
+    console.log('触发器退出:', data.gameObject?.name);
   }
 
   setupLighting() {
@@ -127,6 +211,24 @@ export class SceneManager {
     ground.name = '地面';
     ground.isGround = true;
     this.scene.add(ground);
+
+    const groundGO = new GameObject('地面');
+    groundGO.mesh = ground;
+    groundGO.transform.position = { x: 0, y: 0, z: 0 };
+    groundGO.transform.rotation = { x: -Math.PI / 2, y: 0, z: 0 };
+    
+    const groundRb = groundGO.addComponent(Rigidbody, {
+      mass: 0,
+      type: 'static'
+    });
+    
+    const groundCollider = groundGO.addComponent(BoxCollider, {
+      size: { x: 30, y: 0.1, z: 30 },
+      isTrigger: false,
+      material: PhysicsMaterial.concrete
+    });
+    
+    this.gameObjects.push(groundGO);
 
     const gridHelper = new THREE.GridHelper(30, 30, 0x444444, 0x222222);
     gridHelper.name = '网格';
@@ -639,8 +741,24 @@ export class SceneManager {
   animate() {
     requestAnimationFrame(() => this.animate());
     
+    const deltaTime = Time.update();
+    
+    if (this.physicsEnabled && this.physicsManager) {
+      this.physicsManager.step(deltaTime);
+    }
+    
+    this._updateGameObjects(deltaTime);
+    
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
+  }
+
+  _updateGameObjects(deltaTime) {
+    for (const go of this.gameObjects) {
+      if (go.active) {
+        go.update(deltaTime);
+      }
+    }
   }
 
   getScene() {
@@ -653,5 +771,280 @@ export class SceneManager {
 
   getRenderer() {
     return this.renderer;
+  }
+
+  createGameObjectWithPhysics(options = {}) {
+    const type = options.type || 'cube';
+    const position = options.position || { x: 0, y: 1, z: 0 };
+    const name = options.name || 'GameObject_' + this.objectIdCounter++;
+    
+    const go = new GameObject(name);
+    
+    let mesh;
+    let colliderType;
+    let colliderSize;
+    
+    switch (type.toLowerCase()) {
+      case 'cube':
+      case 'box':
+        mesh = this._createBoxMesh(options);
+        colliderType = BoxCollider;
+        colliderSize = options.size || { x: 1, y: 1, z: 1 };
+        break;
+      case 'sphere':
+        mesh = this._createSphereMesh(options);
+        colliderType = SphereCollider;
+        colliderSize = { radius: options.radius || 0.5 };
+        break;
+      case 'cylinder':
+      case 'capsule':
+        mesh = this._createCylinderMesh(options);
+        colliderType = CapsuleCollider;
+        colliderSize = { 
+          radius: options.radius || 0.5, 
+          height: options.height || 1 
+        };
+        break;
+      default:
+        mesh = this._createBoxMesh(options);
+        colliderType = BoxCollider;
+        colliderSize = options.size || { x: 1, y: 1, z: 1 };
+    }
+    
+    if (mesh) {
+      mesh.position.set(position.x, position.y, position.z);
+      mesh.name = name;
+      this.scene.add(mesh);
+      this.objects.push(mesh);
+      go.mesh = mesh;
+    }
+    
+    go.transform.position = position;
+    
+    if (options.addRigidbody !== false) {
+      const rbOptions = {
+        mass: options.mass !== undefined ? options.mass : 1,
+        type: options.bodyType || 'dynamic',
+        useGravity: options.useGravity !== false
+      };
+      go.addComponent(Rigidbody, rbOptions);
+    }
+    
+    if (options.addCollider !== false) {
+      const colliderOptions = {
+        isTrigger: options.isTrigger || false,
+        material: options.physicsMaterial || PhysicsMaterial.defaultMaterial,
+        ...colliderSize
+      };
+      go.addComponent(colliderType, colliderOptions);
+    }
+    
+    this.gameObjects.push(go);
+    this.onChange();
+    
+    return go;
+  }
+
+  _createBoxMesh(options = {}) {
+    const size = options.size || { x: 1, y: 1, z: 1 };
+    const geometry = new THREE.BoxGeometry(size.x, size.y, size.z);
+    const material = this._createPBRMaterial(options);
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    mesh.userData.objectType = 'cube';
+    return mesh;
+  }
+
+  _createSphereMesh(options = {}) {
+    const radius = options.radius || 0.5;
+    const geometry = new THREE.SphereGeometry(radius, 32, 32);
+    const material = this._createPBRMaterial(options);
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    mesh.userData.objectType = 'sphere';
+    return mesh;
+  }
+
+  _createCylinderMesh(options = {}) {
+    const radiusTop = options.radiusTop || options.radius || 0.5;
+    const radiusBottom = options.radiusBottom || options.radius || 0.5;
+    const height = options.height || 1;
+    const geometry = new THREE.CylinderGeometry(radiusTop, radiusBottom, height, 32);
+    const material = this._createPBRMaterial(options);
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    mesh.userData.objectType = 'cylinder';
+    return mesh;
+  }
+
+  _createPBRMaterial(options = {}) {
+    const color = options.color || 0xffffff;
+    const roughness = options.roughness !== undefined ? options.roughness : 0.5;
+    const metalness = options.metalness !== undefined ? options.metalness : 0.3;
+    const transparent = options.transparent || false;
+    const opacity = options.opacity !== undefined ? options.opacity : 1;
+    
+    return new THREE.MeshStandardMaterial({
+      color: color,
+      roughness: roughness,
+      metalness: metalness,
+      transparent: transparent,
+      opacity: opacity
+    });
+  }
+
+  async loadModel(url, options = {}) {
+    if (!this.modelLoader) {
+      console.error('ModelLoader not initialized');
+      return null;
+    }
+    
+    try {
+      const result = await this.modelLoader.load(url, options);
+      
+      if (result.scene) {
+        const name = options.name || 'Model_' + this.objectIdCounter++;
+        result.scene.name = name;
+        this.scene.add(result.scene);
+        this.objects.push(result.scene);
+        
+        const go = new GameObject(name);
+        go.mesh = result.scene;
+        go.userData = { modelResult: result };
+        
+        if (options.addRigidbody) {
+          go.addComponent(Rigidbody, {
+            mass: options.mass || 1,
+            type: options.bodyType || 'dynamic'
+          });
+        }
+        
+        if (options.addCollider) {
+          const bounds = this._calculateModelBounds(result.scene);
+          if (bounds) {
+            go.addComponent(BoxCollider, {
+              size: {
+                x: bounds.max.x - bounds.min.x,
+                y: bounds.max.y - bounds.min.y,
+                z: bounds.max.z - bounds.min.z
+              },
+              center: {
+                x: (bounds.max.x + bounds.min.x) / 2,
+                y: (bounds.max.y + bounds.min.y) / 2,
+                z: (bounds.max.z + bounds.min.z) / 2
+              }
+            });
+          }
+        }
+        
+        this.gameObjects.push(go);
+        this.onChange();
+        
+        return { gameObject: go, result: result };
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Failed to load model:', error);
+      throw error;
+    }
+  }
+
+  _calculateModelBounds(object3D) {
+    const box = new THREE.Box3();
+    box.setFromObject(object3D);
+    
+    if (box.isEmpty()) {
+      return null;
+    }
+    
+    return {
+      min: { x: box.min.x, y: box.min.y, z: box.min.z },
+      max: { x: box.max.x, y: box.max.y, z: box.max.z }
+    };
+  }
+
+  createAudioSource(options = {}) {
+    const go = new GameObject(options.name || 'AudioSource');
+    
+    const audioSource = go.addComponent(AudioSource, {
+      volume: options.volume || 1,
+      pitch: options.pitch || 1,
+      loop: options.loop || false,
+      spatialBlend: options.spatialBlend || 0
+    });
+    
+    if (options.clip) {
+      audioSource.clip = options.clip;
+    }
+    
+    if (options.autoPlay && options.clip) {
+      audioSource.play();
+    }
+    
+    this.gameObjects.push(go);
+    
+    return audioSource;
+  }
+
+  async loadAudioClip(url, options = {}) {
+    return new AudioClip(options.name || 'AudioClip', {
+      url: url,
+      preload: options.preload !== false
+    });
+  }
+
+  playAudioOneShot(clip, volume = 1, category = 'sfx') {
+    if (this.audioManager) {
+      this.audioManager.playOneShot(clip, volume, category);
+    }
+  }
+
+  addNetworkSync(gameObject, options = {}) {
+    if (!gameObject) return null;
+    
+    const networkTransform = gameObject.addComponent(NetworkTransform, {
+      syncPosition: options.syncPosition !== false,
+      syncRotation: options.syncRotation !== false,
+      syncScale: options.syncScale !== false,
+      sendInterval: options.sendInterval || 0.1,
+      interpolation: options.interpolation || 0.1
+    });
+    
+    return networkTransform;
+  }
+
+  raycast(origin, direction, maxDistance = 100) {
+    if (this.physicsManager) {
+      return this.physicsManager.raycast(origin, direction, maxDistance);
+    }
+    
+    const ray = new THREE.Raycaster(origin, direction, 0, maxDistance);
+    const intersects = ray.intersectObjects(this.objects, true);
+    
+    if (intersects.length > 0) {
+      return {
+        hasHit: true,
+        point: intersects[0].point,
+        normal: intersects[0].face?.normal || { x: 0, y: 1, z: 0 },
+        distance: intersects[0].distance,
+        object: intersects[0].object
+      };
+    }
+    
+    return { hasHit: false };
+  }
+
+  setPhysicsEnabled(enabled) {
+    this.physicsEnabled = enabled;
+  }
+
+  setGravity(x, y, z) {
+    if (this.physicsManager) {
+      this.physicsManager.gravity = { x, y, z };
+    }
   }
 }

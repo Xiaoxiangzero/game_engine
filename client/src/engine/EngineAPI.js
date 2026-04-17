@@ -85,33 +85,49 @@ export class EngineAPI {
 
   handleObjectPosition(data) {
     const { x, y, z } = data;
-    this.sceneManager.updateSelectedObjectPosition([x, y, z]);
+    if (this.sceneManager.selectedObject) {
+      this.sceneManager.updateObjectPosition(
+        this.sceneManager.selectedObject,
+        x, y, z
+      );
+    }
   }
 
   handleObjectRotation(data) {
     const { x, y, z } = data;
-    const mainObject = this.sceneManager.getMainObject();
-    if (mainObject) {
-      mainObject.rotation.set(x, y, z);
+    if (this.sceneManager.selectedObject) {
+      this.sceneManager.updateObjectRotation(
+        this.sceneManager.selectedObject,
+        x, y, z
+      );
     }
   }
 
   handleObjectScale(data) {
     const { x, y, z } = data;
-    const mainObject = this.sceneManager.getMainObject();
-    if (mainObject) {
-      mainObject.scale.set(x, y, z);
+    if (this.sceneManager.selectedObject) {
+      this.sceneManager.updateObjectScale(
+        this.sceneManager.selectedObject,
+        x, y, z
+      );
     }
   }
 
   handleMaterialColor(data) {
     const { color } = data;
-    this.sceneManager.updateMaterialColor(color);
+    if (this.sceneManager.selectedObject) {
+      this.sceneManager.updateMaterialColor(
+        this.sceneManager.selectedObject,
+        color
+      );
+    }
   }
 
   handleLightIntensity(data) {
     const { intensity } = data;
-    this.sceneManager.updateLightIntensity(intensity);
+    if (this.sceneManager.selectedObject && this.sceneManager.selectedObject.isLight) {
+      this.sceneManager.selectedObject.intensity = intensity;
+    }
   }
 
   handleExecuteCode(data) {
@@ -135,39 +151,52 @@ export class EngineAPI {
   }
 
   getSceneInfo() {
-    const mainObject = this.sceneManager.getMainObject();
-    const light = this.sceneManager.getLight();
-    
-    return {
-      objects: mainObject ? [{
-        name: 'Main Cube',
+    const objects = this.sceneManager.objects.map(obj => {
+      const info = {
+        id: obj.id,
+        name: obj.name,
+        type: obj.userData.objectType || 'mesh',
         position: {
-          x: mainObject.position.x,
-          y: mainObject.position.y,
-          z: mainObject.position.z
+          x: obj.position.x,
+          y: obj.position.y,
+          z: obj.position.z
         },
         rotation: {
-          x: mainObject.rotation.x,
-          y: mainObject.rotation.y,
-          z: mainObject.rotation.z
+          x: obj.rotation.x,
+          y: obj.rotation.y,
+          z: obj.rotation.z
         },
         scale: {
-          x: mainObject.scale.x,
-          y: mainObject.scale.y,
-          z: mainObject.scale.z
-        },
-        material: {
-          color: mainObject.material.color.getHexString()
+          x: obj.scale.x,
+          y: obj.scale.y,
+          z: obj.scale.z
         }
-      }] : [],
-      lighting: {
-        intensity: light ? light.intensity : 1.0,
-        position: light ? {
-          x: light.position.x,
-          y: light.position.y,
-          z: light.position.z
-        } : {}
+      };
+      
+      if (obj.material) {
+        info.material = {
+          color: '#' + obj.material.color.getHexString(),
+          roughness: obj.material.roughness,
+          metalness: obj.material.metalness
+        };
       }
+      
+      if (obj.isLight) {
+        info.light = {
+          intensity: obj.intensity || 1.0,
+          color: obj.color ? '#' + obj.color.getHexString() : '#ffffff'
+        };
+      }
+      
+      return info;
+    });
+    
+    return {
+      objects: objects,
+      selectedObject: this.sceneManager.selectedObject ? {
+        id: this.sceneManager.selectedObject.id,
+        name: this.sceneManager.selectedObject.name
+      } : null
     };
   }
 

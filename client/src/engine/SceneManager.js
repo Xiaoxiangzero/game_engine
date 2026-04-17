@@ -78,7 +78,6 @@ export class SceneManager {
 
       this.setupLighting();
       this.setupGround();
-      this.createDefaultObjects();
       this.setupEventListeners();
       this.animate();
       

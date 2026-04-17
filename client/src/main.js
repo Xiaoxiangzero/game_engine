@@ -1,12 +1,14 @@
 import * as THREE from 'three';
 import { SceneManager } from './engine/SceneManager.js';
 import { EngineAPI } from './engine/EngineAPI.js';
+import { AudioManager } from './engine/AudioManager.js';
 
 class MiniGameEngine {
   constructor() {
     this.container = document.getElementById('canvas-container');
     this.sceneManager = null;
     this.engineAPI = null;
+    this.audioManager = null;
     this.isPlaying = false;
     this.currentTool = 'select';
     this.currentView = 'perspective';
@@ -23,6 +25,9 @@ class MiniGameEngine {
       () => this.onSceneChange()
     );
     this.engineAPI = new EngineAPI(this.sceneManager);
+    this.audioManager = new AudioManager();
+    
+    this.sceneManager.createDefaultObjects();
     
     this.initMaterialPresets();
     this.updateSceneTree();
@@ -83,14 +88,23 @@ class MiniGameEngine {
   }
 
   setupEventListeners() {
-    document.getElementById('play-btn').addEventListener('click', () => this.togglePlay());
-    document.getElementById('reset-btn').addEventListener('click', () => this.reset());
+    document.getElementById('play-btn').addEventListener('click', () => {
+      this.audioManager.playClick();
+      this.togglePlay();
+    });
+    document.getElementById('reset-btn').addEventListener('click', () => {
+      this.audioManager.playClick();
+      this.reset();
+    });
 
     const tools = ['select', 'move', 'rotate', 'scale'];
     tools.forEach(tool => {
       const btn = document.getElementById(`tool-${tool}`);
       if (btn) {
-        btn.addEventListener('click', () => this.setTool(tool));
+        btn.addEventListener('click', () => {
+          this.audioManager.playClick();
+          this.setTool(tool);
+        });
       }
     });
 
@@ -99,6 +113,7 @@ class MiniGameEngine {
       const btn = document.getElementById(`view-${view}`);
       if (btn) {
         btn.addEventListener('click', () => {
+          this.audioManager.playClick();
           if (view === 'reset') {
             this.sceneManager.resetView();
           } else {
@@ -108,14 +123,35 @@ class MiniGameEngine {
       }
     });
 
-    document.getElementById('btn-add-cube').addEventListener('click', () => this.addObject('cube'));
-    document.getElementById('btn-add-sphere').addEventListener('click', () => this.addObject('sphere'));
-    document.getElementById('btn-add-cylinder').addEventListener('click', () => this.addObject('cylinder'));
-    document.getElementById('btn-add-plane').addEventListener('click', () => this.addObject('plane'));
-    document.getElementById('btn-add-light').addEventListener('click', () => this.addObject('light'));
+    document.getElementById('btn-add-cube').addEventListener('click', () => {
+      this.audioManager.playPickup();
+      this.addObject('cube');
+    });
+    document.getElementById('btn-add-sphere').addEventListener('click', () => {
+      this.audioManager.playPickup();
+      this.addObject('sphere');
+    });
+    document.getElementById('btn-add-cylinder').addEventListener('click', () => {
+      this.audioManager.playPickup();
+      this.addObject('cylinder');
+    });
+    document.getElementById('btn-add-plane').addEventListener('click', () => {
+      this.audioManager.playPickup();
+      this.addObject('plane');
+    });
+    document.getElementById('btn-add-light').addEventListener('click', () => {
+      this.audioManager.playPickup();
+      this.addObject('light');
+    });
 
-    document.getElementById('btn-delete').addEventListener('click', () => this.deleteSelected());
-    document.getElementById('btn-duplicate').addEventListener('click', () => this.duplicateSelected());
+    document.getElementById('btn-delete').addEventListener('click', () => {
+      this.audioManager.playBounce();
+      this.deleteSelected();
+    });
+    document.getElementById('btn-duplicate').addEventListener('click', () => {
+      this.audioManager.playSuccess();
+      this.duplicateSelected();
+    });
 
     ['pos-x', 'pos-y', 'pos-z'].forEach((id, index) => {
       const input = document.getElementById(id);

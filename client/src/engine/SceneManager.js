@@ -39,6 +39,14 @@ export class SceneManager {
       { name: '玻璃', color: '#88ccff', roughness: 0.1, metalness: 0.0, transparent: true, opacity: 0.3 },
     ];
     
+    this.skyboxEnabled = true;
+    this.skyboxType = 'color';
+    this.skyboxColor1 = 0x1a1a2e;
+    this.skyboxColor2 = 0x16213e;
+    this.skyboxMesh = null;
+    this.skyboxTexture = null;
+    this.skyboxEquirectangularTexture = null;
+    
     this.init();
   }
 
@@ -86,6 +94,7 @@ export class SceneManager {
 
       this.setupLighting();
       this.setupGround();
+      this.setupSkybox();
       this.setupEventListeners();
       this.animate();
       
@@ -149,6 +158,144 @@ export class SceneManager {
     const gridHelper = new THREE.GridHelper(30, 30, 0x444444, 0x222222);
     gridHelper.name = '网格';
     this.scene.add(gridHelper);
+  }
+
+  setupSkybox() {
+    this.updateSkybox();
+  }
+
+  updateSkybox() {
+    this._clearSkybox();
+    
+    if (!this.skyboxEnabled) {
+      this.scene.background = null;
+      return;
+    }
+    
+    switch (this.skyboxType) {
+      case 'color':
+        this.scene.background = new THREE.Color(this.skyboxColor1);
+        break;
+        
+      case 'gradient':
+        this._createGradientSkybox();
+        break;
+        
+      case 'cube':
+        this.scene.background = this.skyboxTexture;
+        break;
+        
+      case 'equirectangular':
+        this.scene.background = this.skyboxEquirectangularTexture;
+        break;
+        
+      default:
+        this.scene.background = new THREE.Color(this.skyboxColor1);
+    }
+  }
+
+  _clearSkybox() {
+    if (this.skyboxMesh) {
+      this.scene.remove(this.skyboxMesh);
+      if (this.skyboxMesh.geometry) {
+        this.skyboxMesh.geometry.dispose();
+      }
+      if (this.skyboxMesh.material) {
+        if (Array.isArray(this.skyboxMesh.material)) {
+          this.skyboxMesh.material.forEach(m => m.dispose());
+        } else {
+          this.skyboxMesh.material.dispose();
+        }
+      }
+      this.skyboxMesh = null;
+    }
+  }
+
+  _createGradientSkybox() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 4;
+    canvas.height = 256;
+    
+    const ctx = canvas.getContext('2d');
+    const gradient = ctx.createLinearGradient(0, 0, 0, 256);
+    
+    const color1 = new THREE.Color(this.skyboxColor1);
+    const color2 = new THREE.Color(this.skyboxColor2);
+    
+    gradient.addColorStop(0, '#' + color1.getHexString());
+    gradient.addColorStop(1, '#' + color2.getHexString());
+    
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 4, 256);
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    
+    this.scene.background = texture;
+  }
+
+  setSkyboxEnabled(enabled) {
+    this.skyboxEnabled = enabled;
+    this.updateSkybox();
+  }
+
+  setSkyboxType(type) {
+    this.skyboxType = type;
+    this.updateSkybox();
+  }
+
+  setSkyboxColors(color1, color2) {
+    if (color1 !== undefined) {
+      this.skyboxColor1 = color1;
+    }
+    if (color2 !== undefined) {
+      this.skyboxColor2 = color2;
+    }
+    this.updateSkybox();
+  }
+
+  loadCubeMapTexture(urls) {
+    const loader = new THREE.CubeTextureLoader();
+    loader.load(
+      urls,
+      (texture) => {
+        this.skyboxTexture = texture;
+        if (this.skyboxType === 'cube') {
+          this.updateSkybox();
+        }
+      },
+      undefined,
+      (error) => {
+        console.error('加载立方体贴图失败:', error);
+      }
+    );
+  }
+
+  loadEquirectangularTexture(url) {
+    const loader = new THREE.TextureLoader();
+    loader.load(
+      url,
+      (texture) => {
+        texture.mapping = THREE.EquirectangularReflectionMapping;
+        this.skyboxEquirectangularTexture = texture;
+        if (this.skyboxType === 'equirectangular') {
+          this.updateSkybox();
+        }
+      },
+      undefined,
+      (error) => {
+        console.error('加载全景图失败:', error);
+      }
+    );
+  }
+
+  getSkyboxInfo() {
+    return {
+      enabled: this.skyboxEnabled,
+      type: this.skyboxType,
+      color1: '#' + new THREE.Color(this.skyboxColor1).getHexString(),
+      color2: '#' + new THREE.Color(this.skyboxColor2).getHexString()
+    };
   }
 
   createDefaultObjects() {
@@ -752,6 +899,14 @@ export class SceneManager {
   }
 
   onObjectChange() {
+    if (this.selectedObject) {
+      this.selectedObject.updateMatrixWorld();
+      const collider = this.getCollider(this.selectedObject);
+      if (collider) {
+        collider.updateBounds();
+      }
+    }
+    
     if (this.onChange) {
       this.onChange();
     }

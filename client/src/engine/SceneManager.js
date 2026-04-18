@@ -402,8 +402,10 @@ export class SceneManager {
     
     this.selectedObject = obj;
     
-    if (obj && obj.material && !obj.isLight) {
-      obj.material.emissive = new THREE.Color(0x222222);
+    if (obj) {
+      if (obj.material && !obj.isLight) {
+        obj.material.emissive = new THREE.Color(0x222222);
+      }
       if (this.transformControls) {
         this.transformControls.attach(obj);
       }

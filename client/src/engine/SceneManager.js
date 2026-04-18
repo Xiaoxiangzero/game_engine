@@ -623,8 +623,94 @@ export class SceneManager {
     canvas.addEventListener('pointerdown', (e) => this.onPointerDown(e));
     canvas.addEventListener('pointermove', (e) => this.onPointerMove(e));
     canvas.addEventListener('pointerup', (e) => this.onPointerUp(e));
+    canvas.addEventListener('contextmenu', (e) => this.onContextMenu(e));
     
     window.addEventListener('resize', () => this.onWindowResize());
+    document.addEventListener('click', (e) => this.onDocumentClick(e));
+  }
+
+  onContextMenu(e) {
+    e.preventDefault();
+    
+    if (this.transformControls && this.transformControls.dragging) return;
+    
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    this.mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    this.mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+    
+    this.raycaster.setFromCamera(this.mouse, this.camera);
+    
+    const intersects = this.raycaster.intersectObjects(this.objects, true);
+    
+    this._contextMenuPosition = { x: e.clientX, y: e.clientY };
+    
+    if (intersects.length > 0) {
+      let obj = intersects[0].object;
+      
+      while (obj.parent && !this.objects.includes(obj)) {
+        obj = obj.parent;
+      }
+      
+      if (this.objects.includes(obj)) {
+        if (obj !== this.selectedObject) {
+          this.selectObject(obj);
+        }
+        this._showObjectContextMenu(e.clientX, e.clientY);
+      } else {
+        this._showSceneContextMenu(e.clientX, e.clientY);
+      }
+    } else {
+      this.deselectObject();
+      this._showSceneContextMenu(e.clientX, e.clientY);
+    }
+  }
+
+  onDocumentClick(e) {
+    if (!e.target.closest('.context-menu') && !e.target.closest('.add-menu')) {
+      this._hideAllContextMenus();
+    }
+  }
+
+  _showSceneContextMenu(x, y) {
+    this._hideAllContextMenus();
+    const menu = document.getElementById('scene-context-menu');
+    if (menu) {
+      this._positionContextMenu(menu, x, y);
+      menu.classList.add('visible');
+    }
+  }
+
+  _showObjectContextMenu(x, y) {
+    this._hideAllContextMenus();
+    const menu = document.getElementById('object-context-menu');
+    if (menu) {
+      this._positionContextMenu(menu, x, y);
+      menu.classList.add('visible');
+    }
+  }
+
+  _hideAllContextMenus() {
+    document.querySelectorAll('.context-menu.visible').forEach(menu => {
+      menu.classList.remove('visible');
+    });
+  }
+
+  _positionContextMenu(menu, x, y) {
+    menu.style.left = x + 'px';
+    menu.style.top = y + 'px';
+    
+    requestAnimationFrame(() => {
+      const rect = menu.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      
+      if (rect.right > viewportWidth) {
+        menu.style.left = (x - rect.width) + 'px';
+      }
+      if (rect.bottom > viewportHeight) {
+        menu.style.top = (y - rect.height) + 'px';
+      }
+    });
   }
 
   onPointerDown(e) {
@@ -840,5 +926,131 @@ export class SceneManager {
     if (this.collisionManager) {
       this.collisionManager.clear();
     }
+  }
+
+  copyObjectToClipboard(obj) {
+    if (!obj) return null;
+    
+    const info = {
+      objectType: obj.userData.objectType,
+      position: obj.position.clone(),
+      rotation: obj.rotation.clone(),
+      scale: obj.scale.clone(),
+      name: obj.name
+    };
+    
+    if (obj.material) {
+      info.material = {
+        color: '#' + obj.material.color.getHexString(),
+        roughness: obj.material.roughness,
+        metalness: obj.material.metalness,
+        opacity: obj.material.opacity,
+        transparent: obj.material.transparent
+      };
+    }
+    
+    if (obj.isLight) {
+      info.light = {
+        intensity: obj.intensity,
+        color: '#' + obj.color.getHexString(),
+        distance: obj.distance,
+        decay: obj.decay
+      };
+    }
+    
+    const collider = this.getCollider(obj);
+    if (collider) {
+      info.collider = {
+        type: collider.type,
+        center: collider.center.clone(),
+        isStatic: collider.isStatic,
+        isTrigger: collider.isTrigger,
+        useGravity: collider.useGravity,
+        mass: collider.mass,
+        bounciness: collider.bounciness,
+        friction: collider.friction
+      };
+      
+      if (collider.size) {
+        info.collider.size = collider.size.clone();
+      }
+      if (collider.radius !== undefined) {
+        info.collider.radius = collider.radius;
+      }
+      if (collider.height !== undefined) {
+        info.collider.height = collider.height;
+      }
+    }
+    
+    return info;
+  }
+
+  createObjectFromClipboard(info, position) {
+    if (!info || !info.objectType) return null;
+    
+    const newPosition = position || info.position.clone().add(new THREE.Vector3(1.5, 0, 0));
+    
+    let newObj = null;
+    const type = info.objectType;
+    
+    switch (type) {
+      case 'cube':
+        newObj = this.createCube({ position: newPosition, name: info.name + ' (副本)' });
+        break;
+      case 'sphere':
+        newObj = this.createSphere({ position: newPosition, name: info.name + ' (副本)' });
+        break;
+      case 'cylinder':
+        newObj = this.createCylinder({ position: newPosition, name: info.name + ' (副本)' });
+        break;
+      case 'plane':
+        newObj = this.createPlane({ position: newPosition, name: info.name + ' (副本)' });
+        break;
+      case 'pointlight':
+        newObj = this.createPointLight({ position: newPosition, name: info.name + ' (副本)' });
+        break;
+      default:
+        return null;
+    }
+    
+    if (newObj) {
+      newObj.rotation.copy(info.rotation);
+      newObj.scale.copy(info.scale);
+      
+      if (info.material && newObj.material) {
+        newObj.material.color.set(info.material.color);
+        newObj.material.roughness = info.material.roughness;
+        newObj.material.metalness = info.material.metalness;
+        newObj.material.opacity = info.material.opacity;
+        newObj.material.transparent = info.material.transparent;
+      }
+      
+      if (info.light && newObj.isLight) {
+        newObj.intensity = info.light.intensity;
+        newObj.color.set(info.light.color);
+        if (info.light.distance !== undefined) newObj.distance = info.light.distance;
+        if (info.light.decay !== undefined) newObj.decay = info.light.decay;
+      }
+    }
+    
+    return newObj;
+  }
+
+  focusOnObject(obj) {
+    if (!obj || !this.controls) return;
+    
+    const target = obj.position.clone();
+    const distance = 5;
+    
+    const cameraDirection = new THREE.Vector3(1, 1, 1).normalize();
+    const newPosition = target.clone().add(cameraDirection.multiplyScalar(distance));
+    
+    this.camera.position.copy(newPosition);
+    this.controls.target.copy(target);
+    this.controls.update();
+  }
+
+  hideContextMenus() {
+    this._hideAllContextMenus();
   }
 }

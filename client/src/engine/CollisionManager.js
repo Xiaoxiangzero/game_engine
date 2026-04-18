@@ -202,11 +202,58 @@ export class Collider {
     const sphereCenter = other._worldCenter;
     const sphereRadius = other.radius;
     
-    const closestPoint = new THREE.Vector3(
+    let closestPoint = new THREE.Vector3(
       Math.max(boxMin.x, Math.min(sphereCenter.x, boxMax.x)),
       Math.max(boxMin.y, Math.min(sphereCenter.y, boxMax.y)),
       Math.max(boxMin.z, Math.min(sphereCenter.z, boxMax.z))
     );
+    
+    const isInside = sphereCenter.x >= boxMin.x && sphereCenter.x <= boxMax.x &&
+                      sphereCenter.y >= boxMin.y && sphereCenter.y <= boxMax.y &&
+                      sphereCenter.z >= boxMin.z && sphereCenter.z <= boxMax.z;
+    
+    if (isInside) {
+      const distToMinX = sphereCenter.x - boxMin.x;
+      const distToMaxX = boxMax.x - sphereCenter.x;
+      const distToMinY = sphereCenter.y - boxMin.y;
+      const distToMaxY = boxMax.y - sphereCenter.y;
+      const distToMinZ = sphereCenter.z - boxMin.z;
+      const distToMaxZ = boxMax.z - sphereCenter.z;
+      
+      let minDist = Math.min(distToMinX, distToMaxX, distToMinY, distToMaxY, distToMinZ, distToMaxZ);
+      let normal = new THREE.Vector3();
+      
+      if (minDist === distToMinY) {
+        closestPoint.set(sphereCenter.x, boxMin.y, sphereCenter.z);
+        normal.set(0, -1, 0);
+      } else if (minDist === distToMaxY) {
+        closestPoint.set(sphereCenter.x, boxMax.y, sphereCenter.z);
+        normal.set(0, 1, 0);
+      } else if (minDist === distToMinX) {
+        closestPoint.set(boxMin.x, sphereCenter.y, sphereCenter.z);
+        normal.set(-1, 0, 0);
+      } else if (minDist === distToMaxX) {
+        closestPoint.set(boxMax.x, sphereCenter.y, sphereCenter.z);
+        normal.set(1, 0, 0);
+      } else if (minDist === distToMinZ) {
+        closestPoint.set(sphereCenter.x, sphereCenter.y, boxMin.z);
+        normal.set(0, 0, -1);
+      } else {
+        closestPoint.set(sphereCenter.x, sphereCenter.y, boxMax.z);
+        normal.set(0, 0, 1);
+      }
+      
+      const distance = minDist;
+      const overlap = sphereRadius + distance;
+      
+      return {
+        thisCollider: this,
+        otherCollider: other,
+        normal: normal,
+        overlap: overlap,
+        contactPoint: closestPoint.clone()
+      };
+    }
     
     const distanceSq = closestPoint.distanceToSquared(sphereCenter);
     
@@ -224,7 +271,7 @@ export class Collider {
     return {
       thisCollider: this,
       otherCollider: other,
-      normal: normal.negate(),
+      normal: normal,
       overlap: overlap,
       contactPoint: closestPoint
     };

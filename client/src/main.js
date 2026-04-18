@@ -15,6 +15,8 @@ class MiniGameEngine {
     this.selectedPresetIndex = -1;
     
     this.debugColliders = false;
+    this.clipboard = null;
+    this.clipboardAction = 'copy';
     
     this.init();
     this.setupEventListeners();
@@ -233,6 +235,172 @@ class MiniGameEngine {
     this.setupColliderPropertyListeners();
     this.setupKeyboardListeners();
     this.setupPanelListeners();
+    this.setupContextMenuListeners();
+  }
+
+  setupContextMenuListeners() {
+    const sceneMenu = document.getElementById('scene-context-menu');
+    const objectMenu = document.getElementById('object-context-menu');
+    
+    if (sceneMenu) {
+      sceneMenu.querySelectorAll('.context-menu-item[data-action]').forEach(item => {
+        item.addEventListener('click', (e) => {
+          const action = item.dataset.action;
+          this.handleSceneContextMenuAction(action);
+        });
+      });
+    }
+    
+    if (objectMenu) {
+      objectMenu.querySelectorAll('.context-menu-item[data-action]').forEach(item => {
+        item.addEventListener('click', (e) => {
+          const action = item.dataset.action;
+          this.handleObjectContextMenuAction(action);
+        });
+      });
+    }
+  }
+
+  handleSceneContextMenuAction(action) {
+    this.sceneManager.hideContextMenus();
+    this.audioManager.playClick();
+    
+    const menuPos = this.sceneManager._contextMenuPosition || { x: 0, y: 0 };
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    
+    const rect = this.sceneManager.renderer.domElement.getBoundingClientRect();
+    mouse.x = ((menuPos.x - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((menuPos.y - rect.top) / rect.height) * 2 + 1;
+    
+    raycaster.setFromCamera(mouse, this.sceneManager.camera);
+    const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    const targetPos = new THREE.Vector3();
+    raycaster.ray.intersectPlane(groundPlane, targetPos);
+    
+    if (!targetPos) {
+      targetPos.set(0, 0.5, 0);
+    } else {
+      targetPos.y = 0.5;
+    }
+    
+    switch (action) {
+      case 'add-cube':
+        this.addObject('cube', { position: targetPos });
+        this.logToConsole('创建立方体', 'info');
+        break;
+      case 'add-sphere':
+        this.addObject('sphere', { position: targetPos });
+        this.logToConsole('创建球体', 'info');
+        break;
+      case 'add-cylinder':
+        this.addObject('cylinder', { position: targetPos });
+        this.logToConsole('创建圆柱体', 'info');
+        break;
+      case 'add-plane':
+        this.addObject('plane', { position: targetPos });
+        this.logToConsole('创建平面', 'info');
+        break;
+      case 'add-light':
+        this.addObject('light', { position: targetPos.clone().setY(2) });
+        this.logToConsole('创建点光源', 'info');
+        break;
+      case 'add-camera':
+        this.addObject('camera', { position: targetPos.clone().setY(2) });
+        this.logToConsole('创建相机', 'info');
+        break;
+      case 'paste':
+        this.pasteObject(targetPos);
+        break;
+    }
+  }
+
+  handleObjectContextMenuAction(action) {
+    this.sceneManager.hideContextMenus();
+    
+    if (!this.sceneManager.selectedObject) return;
+    
+    this.audioManager.playClick();
+    
+    switch (action) {
+      case 'cut':
+        this.cutSelected();
+        break;
+      case 'copy':
+        this.copySelected();
+        break;
+      case 'paste':
+        this.pasteObject();
+        break;
+      case 'duplicate':
+        this.duplicateSelected();
+        break;
+      case 'delete':
+        this.deleteSelected();
+        break;
+      case 'rename':
+        this.startRenameSelected();
+        break;
+      case 'add-collider':
+        this.addColliderToSelectedObject();
+        break;
+      case 'focus':
+        this.focusOnSelected();
+        break;
+    }
+  }
+
+  copySelected() {
+    if (!this.sceneManager.selectedObject) return;
+    
+    this.clipboard = this.sceneManager.copyObjectToClipboard(this.sceneManager.selectedObject);
+    this.clipboardAction = 'copy';
+    this.logToConsole(`已复制: ${this.sceneManager.selectedObject.name}`, 'info');
+  }
+
+  cutSelected() {
+    if (!this.sceneManager.selectedObject) return;
+    
+    this.clipboard = this.sceneManager.copyObjectToClipboard(this.sceneManager.selectedObject);
+    this.clipboardAction = 'cut';
+    this.logToConsole(`已剪切: ${this.sceneManager.selectedObject.name}`, 'info');
+  }
+
+  pasteObject(position) {
+    if (!this.clipboard) return;
+    
+    const newObj = this.sceneManager.createObjectFromClipboard(this.clipboard, position);
+    
+    if (newObj) {
+      if (this.clipboardAction === 'cut') {
+        const oldObj = this.sceneManager.getObjectByName(this.clipboard.name);
+        if (oldObj) {
+          this.sceneManager.removeObject(oldObj);
+        }
+        this.clipboard = null;
+        this.clipboardAction = 'copy';
+      }
+      
+      this.sceneManager.selectObject(newObj);
+      this.logToConsole(`已粘贴: ${newObj.name}`, 'info');
+    }
+  }
+
+  startRenameSelected() {
+    if (!this.sceneManager.selectedObject) return;
+    
+    const objName = document.getElementById('obj-name');
+    if (objName) {
+      objName.focus();
+      objName.select();
+    }
+  }
+
+  focusOnSelected() {
+    if (!this.sceneManager.selectedObject) return;
+    
+    this.sceneManager.focusOnObject(this.sceneManager.selectedObject);
+    this.logToConsole(`聚焦: ${this.sceneManager.selectedObject.name}`, 'info');
   }
 
   setupPropertyListeners() {
@@ -652,6 +820,24 @@ class MiniGameEngine {
           if (e.ctrlKey || e.metaKey) {
             e.preventDefault();
             this.duplicateSelected();
+          }
+          break;
+        case 'c':
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            this.copySelected();
+          }
+          break;
+        case 'v':
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            this.pasteObject();
+          }
+          break;
+        case 'x':
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            this.cutSelected();
           }
           break;
         case 'escape':

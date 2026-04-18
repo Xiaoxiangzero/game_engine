@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
+import { CollisionManager, ColliderType, createBoxCollider, createSphereCollider } from './CollisionManager.js';
 
 export class SceneManager {
   constructor(container, onChangeCallback) {
@@ -22,6 +23,10 @@ export class SceneManager {
     this.isDragging = false;
     this.currentTool = 'select';
     this.isTransformMode = false;
+    
+    this.collisionManager = null;
+    this.physicsEnabled = false;
+    this.lastTime = performance.now() / 1000;
     
     this.materialPresets = [
       { name: '红色塑料', color: '#ff4444', roughness: 0.4, metalness: 0.1 },
@@ -76,6 +81,9 @@ export class SceneManager {
       this.scene.add(this.transformControls);
       console.log('TransformControls 初始化成功');
 
+      this.collisionManager = new CollisionManager();
+      console.log('CollisionManager 初始化成功');
+
       this.setupLighting();
       this.setupGround();
       this.setupEventListeners();
@@ -114,18 +122,29 @@ export class SceneManager {
   }
 
   setupGround() {
-    const groundGeometry = new THREE.PlaneGeometry(30, 30);
+    const groundGeometry = new THREE.BoxGeometry(30, 1, 30);
     const groundMaterial = new THREE.MeshStandardMaterial({ 
       color: 0x2c3e50,
       roughness: 0.8,
       metalness: 0.2
     });
     const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -0.5;
     ground.receiveShadow = true;
     ground.name = '地面';
     ground.isGround = true;
+    ground.userData.objectType = 'plane';
     this.scene.add(ground);
+    this.objects.push(ground);
+
+    this.addColliderToObject(ground, {
+      type: ColliderType.BOX,
+      size: new THREE.Vector3(30, 1, 30),
+      center: new THREE.Vector3(0, 0, 0),
+      isStatic: true,
+      isTrigger: false,
+      useGravity: false
+    });
 
     const gridHelper = new THREE.GridHelper(30, 30, 0x444444, 0x222222);
     gridHelper.name = '网格';
@@ -134,7 +153,7 @@ export class SceneManager {
 
   createDefaultObjects() {
     this.createCube({ 
-      position: new THREE.Vector3(0, 0.5, 0),
+      position: new THREE.Vector3(0, 3, 0),
       name: '立方体',
       color: 0xff4444
     });
@@ -160,6 +179,14 @@ export class SceneManager {
     
     this.scene.add(mesh);
     this.objects.push(mesh);
+    
+    this.addColliderToObject(mesh, {
+      type: ColliderType.BOX,
+      size: new THREE.Vector3(1, 1, 1),
+      isStatic: options.isStatic || false,
+      isTrigger: options.isTrigger || false
+    });
+    
     this.onChange();
     
     return mesh;
@@ -183,6 +210,14 @@ export class SceneManager {
     
     this.scene.add(mesh);
     this.objects.push(mesh);
+    
+    this.addColliderToObject(mesh, {
+      type: ColliderType.SPHERE,
+      radius: 0.5,
+      isStatic: options.isStatic || false,
+      isTrigger: options.isTrigger || false
+    });
+    
     this.onChange();
     
     return mesh;
@@ -206,6 +241,15 @@ export class SceneManager {
     
     this.scene.add(mesh);
     this.objects.push(mesh);
+    
+    this.addColliderToObject(mesh, {
+      type: ColliderType.CAPSULE,
+      radius: 0.5,
+      height: 1,
+      isStatic: options.isStatic || false,
+      isTrigger: options.isTrigger || false
+    });
+    
     this.onChange();
     
     return mesh;
@@ -424,6 +468,10 @@ export class SceneManager {
   updateObjectScale(obj, x, y, z) {
     if (!obj) return;
     obj.scale.set(x, y, z);
+    const collider = this.getCollider(obj);
+    if (collider) {
+      collider.updateBounds();
+    }
     this.onObjectChange();
   }
 
@@ -638,6 +686,14 @@ export class SceneManager {
   animate() {
     requestAnimationFrame(() => this.animate());
     
+    const currentTime = performance.now() / 1000;
+    const deltaTime = Math.min(currentTime - this.lastTime, 0.1);
+    this.lastTime = currentTime;
+    
+    if (this.physicsEnabled && this.collisionManager) {
+      this.collisionManager.update(deltaTime);
+    }
+    
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
   }
@@ -652,5 +708,86 @@ export class SceneManager {
 
   getRenderer() {
     return this.renderer;
+  }
+
+  addColliderToObject(object, options = {}) {
+    if (!this.collisionManager) return null;
+    
+    const collider = this.collisionManager.addCollider(object, options);
+    return collider;
+  }
+
+  getCollider(object) {
+    if (!this.collisionManager) return null;
+    return this.collisionManager.getCollider(object);
+  }
+
+  removeCollider(object) {
+    if (!this.collisionManager) return;
+    this.collisionManager.removeCollider(object);
+  }
+
+  enablePhysics() {
+    this.physicsEnabled = true;
+    console.log('Physics enabled');
+  }
+
+  disablePhysics() {
+    this.physicsEnabled = false;
+    console.log('Physics disabled');
+  }
+
+  togglePhysics() {
+    this.physicsEnabled = !this.physicsEnabled;
+    return this.physicsEnabled;
+  }
+
+  setDebugColliders(enabled) {
+    if (!this.collisionManager) return;
+    this.collisionManager.setDebugMode(enabled, this.scene);
+  }
+
+  setColliderStatic(object, isStatic) {
+    const collider = this.getCollider(object);
+    if (collider) {
+      collider.isStatic = isStatic;
+    }
+  }
+
+  setColliderTrigger(object, isTrigger) {
+    const collider = this.getCollider(object);
+    if (collider) {
+      collider.isTrigger = isTrigger;
+    }
+  }
+
+  setColliderVelocity(object, velocity) {
+    const collider = this.getCollider(object);
+    if (collider) {
+      collider.velocity.copy(velocity);
+    }
+  }
+
+  getColliderVelocity(object) {
+    const collider = this.getCollider(object);
+    if (collider) {
+      return collider.velocity.clone();
+    }
+    return new THREE.Vector3(0, 0, 0);
+  }
+
+  setObjectColliderType(object, type, options = {}) {
+    this.removeCollider(object);
+    const newOptions = {
+      ...options,
+      type: type
+    };
+    return this.addColliderToObject(object, newOptions);
+  }
+
+  clearAllColliders() {
+    if (this.collisionManager) {
+      this.collisionManager.clear();
+    }
   }
 }

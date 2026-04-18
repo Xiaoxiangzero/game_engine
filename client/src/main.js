@@ -14,6 +14,8 @@ class MiniGameEngine {
     this.currentView = 'perspective';
     this.selectedPresetIndex = -1;
     
+    this.debugColliders = false;
+    
     this.init();
     this.setupEventListeners();
     this.connectToServer();
@@ -30,8 +32,11 @@ class MiniGameEngine {
     this.sceneManager.createDefaultObjects();
     
     this.initMaterialPresets();
+    this.setupCollisionListeners();
     this.updateSceneTree();
     this.updateStatusBar();
+    
+    this.logToConsole('游戏引擎初始化完成', 'info');
   }
 
   initMaterialPresets() {
@@ -83,19 +88,34 @@ class MiniGameEngine {
       });
     };
     
-    createPresetElements(libraryContainer, true);
-    createPresetElements(objContainer, false);
+    if (libraryContainer) createPresetElements(libraryContainer, true);
+    if (objContainer) createPresetElements(objContainer, false);
   }
 
   setupEventListeners() {
-    document.getElementById('play-btn').addEventListener('click', () => {
-      this.audioManager.playClick();
-      this.togglePlay();
-    });
-    document.getElementById('reset-btn').addEventListener('click', () => {
-      this.audioManager.playClick();
-      this.reset();
-    });
+    const playBtn = document.getElementById('play-btn');
+    if (playBtn) {
+      playBtn.addEventListener('click', () => {
+        this.audioManager.playClick();
+        this.togglePlay();
+      });
+    }
+    
+    const pauseBtn = document.getElementById('pause-btn');
+    if (pauseBtn) {
+      pauseBtn.addEventListener('click', () => {
+        this.audioManager.playClick();
+        this.togglePlay();
+      });
+    }
+    
+    const stopBtn = document.getElementById('stop-btn');
+    if (stopBtn) {
+      stopBtn.addEventListener('click', () => {
+        this.audioManager.playClick();
+        this.stopPlay();
+      });
+    }
 
     const tools = ['select', 'move', 'rotate', 'scale'];
     tools.forEach(tool => {
@@ -108,7 +128,7 @@ class MiniGameEngine {
       }
     });
 
-    const viewBtns = ['perspective', 'top', 'front', 'right', 'reset'];
+    const viewBtns = ['perspective', 'ortho', 'top', 'front', 'right', 'reset'];
     viewBtns.forEach(view => {
       const btn = document.getElementById(`view-${view}`);
       if (btn) {
@@ -123,135 +143,381 @@ class MiniGameEngine {
       }
     });
 
-    document.getElementById('btn-add-cube').addEventListener('click', () => {
-      this.audioManager.playPickup();
-      this.addObject('cube');
-    });
-    document.getElementById('btn-add-sphere').addEventListener('click', () => {
-      this.audioManager.playPickup();
-      this.addObject('sphere');
-    });
-    document.getElementById('btn-add-cylinder').addEventListener('click', () => {
-      this.audioManager.playPickup();
-      this.addObject('cylinder');
-    });
-    document.getElementById('btn-add-plane').addEventListener('click', () => {
-      this.audioManager.playPickup();
-      this.addObject('plane');
-    });
-    document.getElementById('btn-add-light').addEventListener('click', () => {
-      this.audioManager.playPickup();
-      this.addObject('light');
+    const addButtons = ['cube', 'sphere', 'cylinder', 'plane', 'light', 'camera'];
+    addButtons.forEach(type => {
+      const btn = document.getElementById(`btn-add-${type}`);
+      if (btn) {
+        btn.addEventListener('click', () => {
+          this.audioManager.playPickup();
+          this.addObject(type);
+        });
+      }
     });
 
-    document.getElementById('btn-delete').addEventListener('click', () => {
-      this.audioManager.playBounce();
-      this.deleteSelected();
-    });
-    document.getElementById('btn-duplicate').addEventListener('click', () => {
-      this.audioManager.playSuccess();
-      this.duplicateSelected();
-    });
+    const deleteBtn = document.getElementById('btn-delete');
+    if (deleteBtn) {
+      deleteBtn.addEventListener('click', () => {
+        this.audioManager.playBounce();
+        this.deleteSelected();
+      });
+    }
+    
+    const duplicateBtn = document.getElementById('btn-duplicate');
+    if (duplicateBtn) {
+      duplicateBtn.addEventListener('click', () => {
+        this.audioManager.playSuccess();
+        this.duplicateSelected();
+      });
+    }
 
+    const parentBtn = document.getElementById('btn-parent');
+    if (parentBtn) {
+      parentBtn.addEventListener('click', () => {
+        this.audioManager.playClick();
+        console.log('Parent functionality not implemented yet');
+      });
+    }
+    
+    const unparentBtn = document.getElementById('btn-unparent');
+    if (unparentBtn) {
+      unparentBtn.addEventListener('click', () => {
+        this.audioManager.playClick();
+        console.log('Unparent functionality not implemented yet');
+      });
+    }
+
+    const physicsBtn = document.getElementById('btn-physics');
+    if (physicsBtn) {
+      physicsBtn.addEventListener('click', () => {
+        this.audioManager.playClick();
+        this.togglePhysics();
+      });
+    }
+    
+    const debugColliderBtn = document.getElementById('btn-debug-collider');
+    if (debugColliderBtn) {
+      debugColliderBtn.addEventListener('click', () => {
+        this.audioManager.playClick();
+        this.toggleDebugColliders();
+      });
+    }
+
+    const saveBtn = document.getElementById('btn-save');
+    if (saveBtn) {
+      saveBtn.addEventListener('click', () => {
+        this.audioManager.playClick();
+        console.log('Save functionality not implemented yet');
+      });
+    }
+    
+    const loadBtn = document.getElementById('btn-load');
+    if (loadBtn) {
+      loadBtn.addEventListener('click', () => {
+        this.audioManager.playClick();
+        console.log('Load functionality not implemented yet');
+      });
+    }
+
+    this.setupPropertyListeners();
+    this.setupColliderPropertyListeners();
+    this.setupKeyboardListeners();
+    this.setupPanelListeners();
+  }
+
+  setupPropertyListeners() {
     ['pos-x', 'pos-y', 'pos-z'].forEach((id, index) => {
       const input = document.getElementById(id);
-      input.addEventListener('change', (e) => {
-        if (this.sceneManager.selectedObject) {
-          const pos = this.sceneManager.getObjectPosition(this.sceneManager.selectedObject);
-          const axes = ['x', 'y', 'z'];
-          pos[axes[index]] = parseFloat(e.target.value);
-          this.sceneManager.updateObjectPosition(
-            this.sceneManager.selectedObject,
-            pos.x, pos.y, pos.z
-          );
-        }
-      });
+      if (input) {
+        input.addEventListener('change', (e) => {
+          if (this.sceneManager.selectedObject) {
+            const pos = this.sceneManager.getObjectPosition(this.sceneManager.selectedObject);
+            const axes = ['x', 'y', 'z'];
+            pos[axes[index]] = parseFloat(e.target.value);
+            this.sceneManager.updateObjectPosition(
+              this.sceneManager.selectedObject,
+              pos.x, pos.y, pos.z
+            );
+          }
+        });
+      }
     });
 
     ['rot-x', 'rot-y', 'rot-z'].forEach((id, index) => {
       const input = document.getElementById(id);
-      input.addEventListener('change', (e) => {
-        if (this.sceneManager.selectedObject) {
-          const rot = this.sceneManager.getObjectRotation(this.sceneManager.selectedObject);
-          const axes = ['x', 'y', 'z'];
-          rot[axes[index]] = parseFloat(e.target.value);
-          this.sceneManager.updateObjectRotation(
-            this.sceneManager.selectedObject,
-            rot.x, rot.y, rot.z
-          );
-        }
-      });
+      if (input) {
+        input.addEventListener('change', (e) => {
+          if (this.sceneManager.selectedObject) {
+            const rot = this.sceneManager.getObjectRotation(this.sceneManager.selectedObject);
+            const axes = ['x', 'y', 'z'];
+            rot[axes[index]] = parseFloat(e.target.value);
+            this.sceneManager.updateObjectRotation(
+              this.sceneManager.selectedObject,
+              rot.x, rot.y, rot.z
+            );
+          }
+        });
+      }
     });
 
     ['scale-x', 'scale-y', 'scale-z'].forEach((id, index) => {
       const input = document.getElementById(id);
-      input.addEventListener('change', (e) => {
-        if (this.sceneManager.selectedObject) {
-          const scale = this.sceneManager.getObjectScale(this.sceneManager.selectedObject);
-          const axes = ['x', 'y', 'z'];
-          scale[axes[index]] = parseFloat(e.target.value);
-          this.sceneManager.updateObjectScale(
-            this.sceneManager.selectedObject,
-            scale.x, scale.y, scale.z
-          );
-        }
-      });
-    });
-
-    document.getElementById('material-color').addEventListener('input', (e) => {
-      if (this.sceneManager.selectedObject) {
-        this.sceneManager.updateMaterialColor(
-          this.sceneManager.selectedObject,
-          e.target.value
-        );
-        document.getElementById('color-preview').style.backgroundColor = e.target.value;
+      if (input) {
+        input.addEventListener('change', (e) => {
+          if (this.sceneManager.selectedObject) {
+            const scale = this.sceneManager.getObjectScale(this.sceneManager.selectedObject);
+            const axes = ['x', 'y', 'z'];
+            scale[axes[index]] = parseFloat(e.target.value);
+            this.sceneManager.updateObjectScale(
+              this.sceneManager.selectedObject,
+              scale.x, scale.y, scale.z
+            );
+          }
+        });
       }
     });
+
+    const materialColor = document.getElementById('material-color');
+    if (materialColor) {
+      materialColor.addEventListener('input', (e) => {
+        if (this.sceneManager.selectedObject && this.sceneManager.selectedObject.material) {
+          this.sceneManager.updateMaterialColor(
+            this.sceneManager.selectedObject,
+            e.target.value
+          );
+          const colorPreview = document.getElementById('color-preview');
+          if (colorPreview) {
+            colorPreview.style.backgroundColor = e.target.value;
+          }
+        }
+      });
+    }
 
     ['material-roughness', 'material-metalness', 'material-opacity'].forEach(id => {
       const input = document.getElementById(id);
-      const valueId = id.replace('material-', '') + '-value';
-      const valueEl = document.getElementById(valueId);
-      
-      input.addEventListener('input', (e) => {
-        const value = parseFloat(e.target.value);
-        if (valueEl) valueEl.textContent = value.toFixed(2);
+      if (input) {
+        const valueId = id.replace('material-', '') + '-value';
+        const valueEl = document.getElementById(valueId);
         
-        if (this.sceneManager.selectedObject) {
-          const props = {};
-          if (id === 'material-roughness') props.roughness = value;
-          if (id === 'material-metalness') props.metalness = value;
-          if (id === 'material-opacity') props.opacity = value;
+        input.addEventListener('input', (e) => {
+          const value = parseFloat(e.target.value);
+          if (valueEl) valueEl.textContent = value.toFixed(2);
           
-          this.sceneManager.updateMaterialProperties(
-            this.sceneManager.selectedObject,
-            props
-          );
+          if (this.sceneManager.selectedObject) {
+            const props = {};
+            if (id === 'material-roughness') props.roughness = value;
+            if (id === 'material-metalness') props.metalness = value;
+            if (id === 'material-opacity') props.opacity = value;
+            
+            this.sceneManager.updateMaterialProperties(
+              this.sceneManager.selectedObject,
+              props
+            );
+          }
+        });
+      }
+    });
+
+    const objName = document.getElementById('obj-name');
+    if (objName) {
+      objName.addEventListener('change', (e) => {
+        if (this.sceneManager.selectedObject) {
+          this.sceneManager.selectedObject.name = e.target.value;
+          this.updateSceneTree();
         }
       });
-    });
+    }
 
-    document.getElementById('obj-name').addEventListener('change', (e) => {
-      if (this.sceneManager.selectedObject) {
-        this.sceneManager.selectedObject.name = e.target.value;
-        this.updateSceneTree();
+    const lightIntensity = document.getElementById('light-intensity');
+    if (lightIntensity) {
+      lightIntensity.addEventListener('input', (e) => {
+        if (this.sceneManager.selectedObject && this.sceneManager.selectedObject.isLight) {
+          this.sceneManager.selectedObject.intensity = parseFloat(e.target.value);
+          const valueEl = document.getElementById('light-intensity-value');
+          if (valueEl) {
+            valueEl.textContent = parseFloat(e.target.value).toFixed(1);
+          }
+        }
+      });
+    }
+
+    const lightColor = document.getElementById('light-color');
+    if (lightColor) {
+      lightColor.addEventListener('input', (e) => {
+        if (this.sceneManager.selectedObject && this.sceneManager.selectedObject.isLight) {
+          this.sceneManager.selectedObject.color.set(e.target.value);
+          const preview = document.getElementById('light-color-preview');
+          if (preview) {
+            preview.style.backgroundColor = e.target.value;
+          }
+        }
+      });
+    }
+  }
+
+  setupColliderPropertyListeners() {
+    const colliderType = document.getElementById('collider-type');
+    if (colliderType) {
+      colliderType.addEventListener('change', (e) => {
+        if (this.sceneManager.selectedObject) {
+          const collider = this.sceneManager.getCollider(this.sceneManager.selectedObject);
+          if (collider) {
+            const newType = e.target.value;
+            const sizeRow = document.getElementById('collider-size-row');
+            const radiusRow = document.getElementById('collider-radius-row');
+            
+            if (newType === 'sphere') {
+              if (sizeRow) sizeRow.style.display = 'none';
+              if (radiusRow) radiusRow.style.display = 'flex';
+            } else {
+              if (sizeRow) sizeRow.style.display = 'flex';
+              if (radiusRow) radiusRow.style.display = 'none';
+            }
+            
+            this.sceneManager.setObjectColliderType(
+              this.sceneManager.selectedObject,
+              newType,
+              {
+                center: collider.center.clone(),
+                size: collider.size.clone(),
+                radius: collider.radius,
+                height: collider.height,
+                isStatic: collider.isStatic,
+                isTrigger: collider.isTrigger,
+                useGravity: collider.useGravity,
+                mass: collider.mass,
+                bounciness: collider.bounciness,
+                friction: collider.friction
+              }
+            );
+            
+            this.logToConsole(`碰撞体类型已更改为: ${newType}`, 'info');
+          }
+        }
+      });
+    }
+
+    const colliderStatic = document.getElementById('collider-static');
+    if (colliderStatic) {
+      colliderStatic.addEventListener('change', (e) => {
+        if (this.sceneManager.selectedObject) {
+          this.sceneManager.setColliderStatic(this.sceneManager.selectedObject, e.target.checked);
+          this.logToConsole(`碰撞体静态属性: ${e.target.checked ? '开启' : '关闭'}`, 'info');
+        }
+      });
+    }
+
+    const colliderTrigger = document.getElementById('collider-trigger');
+    if (colliderTrigger) {
+      colliderTrigger.addEventListener('change', (e) => {
+        if (this.sceneManager.selectedObject) {
+          this.sceneManager.setColliderTrigger(this.sceneManager.selectedObject, e.target.checked);
+          this.logToConsole(`碰撞体触发器属性: ${e.target.checked ? '开启' : '关闭'}`, 'info');
+        }
+      });
+    }
+
+    const colliderGravity = document.getElementById('collider-gravity');
+    if (colliderGravity) {
+      colliderGravity.addEventListener('change', (e) => {
+        if (this.sceneManager.selectedObject) {
+          const collider = this.sceneManager.getCollider(this.sceneManager.selectedObject);
+          if (collider) {
+            collider.useGravity = e.target.checked;
+            this.logToConsole(`碰撞体重力: ${e.target.checked ? '开启' : '关闭'}`, 'info');
+          }
+        }
+      });
+    }
+
+    const colliderMass = document.getElementById('collider-mass');
+    if (colliderMass) {
+      colliderMass.addEventListener('change', (e) => {
+        if (this.sceneManager.selectedObject) {
+          const collider = this.sceneManager.getCollider(this.sceneManager.selectedObject);
+          if (collider) {
+            collider.mass = Math.max(0.01, parseFloat(e.target.value) || 1);
+            this.logToConsole(`碰撞体质量: ${collider.mass}`, 'info');
+          }
+        }
+      });
+    }
+
+    const colliderBounciness = document.getElementById('collider-bounciness');
+    if (colliderBounciness) {
+      colliderBounciness.addEventListener('change', (e) => {
+        if (this.sceneManager.selectedObject) {
+          const collider = this.sceneManager.getCollider(this.sceneManager.selectedObject);
+          if (collider) {
+            collider.bounciness = Math.max(0, Math.min(1, parseFloat(e.target.value) || 0.2));
+            this.logToConsole(`碰撞体弹性: ${collider.bounciness}`, 'info');
+          }
+        }
+      });
+    }
+
+    const colliderFriction = document.getElementById('collider-friction');
+    if (colliderFriction) {
+      colliderFriction.addEventListener('change', (e) => {
+        if (this.sceneManager.selectedObject) {
+          const collider = this.sceneManager.getCollider(this.sceneManager.selectedObject);
+          if (collider) {
+            collider.friction = Math.max(0, Math.min(1, parseFloat(e.target.value) || 0.5));
+            this.logToConsole(`碰撞体摩擦: ${collider.friction}`, 'info');
+          }
+        }
+      });
+    }
+
+    ['collider-center-x', 'collider-center-y', 'collider-center-z'].forEach((id, index) => {
+      const input = document.getElementById(id);
+      if (input) {
+        input.addEventListener('change', (e) => {
+          if (this.sceneManager.selectedObject) {
+            const collider = this.sceneManager.getCollider(this.sceneManager.selectedObject);
+            if (collider) {
+              const axes = ['x', 'y', 'z'];
+              collider.center[axes[index]] = parseFloat(e.target.value) || 0;
+              collider.updateBounds();
+              this.logToConsole(`碰撞体中心 ${axes[index].toUpperCase()}: ${collider.center[axes[index]]}`, 'info');
+            }
+          }
+        });
       }
     });
 
-    document.getElementById('light-intensity').addEventListener('input', (e) => {
-      if (this.sceneManager.selectedObject && this.sceneManager.selectedObject.isLight) {
-        this.sceneManager.selectedObject.intensity = parseFloat(e.target.value);
-        document.getElementById('light-intensity-value').textContent = parseFloat(e.target.value).toFixed(1);
+    ['collider-size-x', 'collider-size-y', 'collider-size-z'].forEach((id, index) => {
+      const input = document.getElementById(id);
+      if (input) {
+        input.addEventListener('change', (e) => {
+          if (this.sceneManager.selectedObject) {
+            const collider = this.sceneManager.getCollider(this.sceneManager.selectedObject);
+            if (collider) {
+              const axes = ['x', 'y', 'z'];
+              collider.size[axes[index]] = Math.max(0.01, parseFloat(e.target.value) || 1);
+              collider.updateBounds();
+              this.logToConsole(`碰撞体大小 ${axes[index].toUpperCase()}: ${collider.size[axes[index]]}`, 'info');
+            }
+          }
+        });
       }
     });
 
-    document.getElementById('light-color').addEventListener('input', (e) => {
-      if (this.sceneManager.selectedObject && this.sceneManager.selectedObject.isLight) {
-        this.sceneManager.selectedObject.color.set(e.target.value);
-        document.getElementById('light-color-preview').style.backgroundColor = e.target.value;
-      }
-    });
+    const colliderRadius = document.getElementById('collider-radius');
+    if (colliderRadius) {
+      colliderRadius.addEventListener('change', (e) => {
+        if (this.sceneManager.selectedObject) {
+          const collider = this.sceneManager.getCollider(this.sceneManager.selectedObject);
+          if (collider) {
+            collider.radius = Math.max(0.01, parseFloat(e.target.value) || 0.5);
+            collider.updateBounds();
+            this.logToConsole(`碰撞体半径: ${collider.radius}`, 'info');
+          }
+        }
+      });
+    }
+  }
 
+  setupKeyboardListeners() {
     document.addEventListener('keydown', (e) => {
       if (e.target.tagName === 'INPUT') return;
       
@@ -281,7 +547,34 @@ class MiniGameEngine {
         case 'escape':
           this.sceneManager.deselectObject();
           break;
+        case 'f5':
+          e.preventDefault();
+          this.togglePlay();
+          break;
       }
+    });
+  }
+
+  setupPanelListeners() {
+    const panelTabs = document.querySelectorAll('.panel-tab[data-panel]');
+    panelTabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        const panelId = tab.dataset.panel;
+        
+        document.querySelectorAll('.panel-tab[data-panel]').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        
+        const hierarchyPanel = document.getElementById('hierarchy-panel');
+        const projectPanel = document.getElementById('project-panel');
+        
+        if (panelId === 'hierarchy') {
+          if (hierarchyPanel) hierarchyPanel.style.display = 'block';
+          if (projectPanel) projectPanel.style.display = 'none';
+        } else if (panelId === 'project') {
+          if (hierarchyPanel) hierarchyPanel.style.display = 'none';
+          if (projectPanel) projectPanel.style.display = 'block';
+        }
+      });
     });
   }
 
@@ -305,18 +598,20 @@ class MiniGameEngine {
 
   updateSceneTree() {
     const treeEl = document.getElementById('scene-tree');
+    if (!treeEl) return;
+    
     const objects = this.sceneManager.objects;
     
     treeEl.innerHTML = '';
     
     if (objects.length === 0) {
-      treeEl.innerHTML = '<li class="scene-tree-item" style="opacity: 0.5; cursor: default;">场景为空</li>';
+      treeEl.innerHTML = '<li class="tree-item" style="opacity: 0.5; cursor: default;">场景为空</li>';
       return;
     }
     
-    objects.forEach((obj, index) => {
+    objects.forEach((obj) => {
       const li = document.createElement('li');
-      li.className = 'scene-tree-item';
+      li.className = 'tree-item';
       if (obj === this.sceneManager.selectedObject) {
         li.classList.add('selected');
       }
@@ -329,18 +624,10 @@ class MiniGameEngine {
         pointlight: '☀'
       };
       
-      const typeNames = {
-        cube: '立方体',
-        sphere: '球体',
-        cylinder: '圆柱体',
-        plane: '平面',
-        pointlight: '点光源'
-      };
-      
       const icon = typeIcons[obj.userData.objectType] || '▢';
       
       li.innerHTML = `
-        <span class="icon">${icon}</span>
+        <span class="tree-icon">${icon}</span>
         <span>${obj.name}</span>
       `;
       
@@ -356,62 +643,190 @@ class MiniGameEngine {
   updatePropertyPanel() {
     const info = this.sceneManager.getSelectedObjectInfo();
     const noSelection = document.getElementById('no-selection');
-    const sections = ['section-name', 'section-transform', 'section-material', 'section-light'];
+    
+    const allSections = [
+      'section-name', 'section-transform', 'section-mesh', 
+      'section-material', 'section-collider', 'section-light',
+      'section-add-component'
+    ];
     
     if (!info) {
-      noSelection.style.display = 'block';
-      sections.forEach(id => {
-        document.getElementById(id).style.display = 'none';
+      if (noSelection) noSelection.style.display = 'block';
+      allSections.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
       });
       return;
     }
     
-    noSelection.style.display = 'none';
+    if (noSelection) noSelection.style.display = 'none';
     
-    document.getElementById('section-name').style.display = 'block';
-    document.getElementById('obj-name').value = info.name;
-    document.getElementById('obj-type').textContent = this.getObjectTypeName(info.type);
-    
-    document.getElementById('section-transform').style.display = 'block';
-    document.getElementById('pos-x').value = info.position.x;
-    document.getElementById('pos-y').value = info.position.y;
-    document.getElementById('pos-z').value = info.position.z;
-    document.getElementById('rot-x').value = info.rotation.x;
-    document.getElementById('rot-y').value = info.rotation.y;
-    document.getElementById('rot-z').value = info.rotation.z;
-    document.getElementById('scale-x').value = info.scale.x;
-    document.getElementById('scale-y').value = info.scale.y;
-    document.getElementById('scale-z').value = info.scale.z;
-    
-    if (info.material && !info.isLight) {
-      document.getElementById('section-material').style.display = 'block';
-      document.getElementById('material-color').value = info.material.color;
-      document.getElementById('color-preview').style.backgroundColor = info.material.color;
-      document.getElementById('material-roughness').value = info.material.roughness;
-      document.getElementById('roughness-value').textContent = info.material.roughness.toFixed(2);
-      document.getElementById('material-metalness').value = info.material.metalness;
-      document.getElementById('metalness-value').textContent = info.material.metalness.toFixed(2);
-      document.getElementById('material-opacity').value = info.material.opacity;
-      document.getElementById('opacity-value').textContent = info.material.opacity.toFixed(2);
-    } else {
-      document.getElementById('section-material').style.display = 'none';
+    const sectionName = document.getElementById('section-name');
+    if (sectionName) {
+      sectionName.style.display = 'block';
+      const objName = document.getElementById('obj-name');
+      const objNameDisplay = document.getElementById('obj-name-display');
+      if (objName) objName.value = info.name;
+      if (objNameDisplay) objNameDisplay.textContent = info.name;
     }
     
-    if (info.isLight && info.light) {
-      document.getElementById('section-light').style.display = 'block';
-      document.getElementById('light-intensity').value = info.light.intensity;
-      document.getElementById('light-intensity-value').textContent = info.light.intensity.toFixed(1);
-      document.getElementById('light-color').value = info.light.color;
-      document.getElementById('light-color-preview').style.backgroundColor = info.light.color;
-    } else {
-      document.getElementById('section-light').style.display = 'none';
+    const sectionTransform = document.getElementById('section-transform');
+    if (sectionTransform) {
+      sectionTransform.style.display = 'block';
+      const posX = document.getElementById('pos-x');
+      const posY = document.getElementById('pos-y');
+      const posZ = document.getElementById('pos-z');
+      if (posX) posX.value = info.position.x;
+      if (posY) posY.value = info.position.y;
+      if (posZ) posZ.value = info.position.z;
+      
+      const rotX = document.getElementById('rot-x');
+      const rotY = document.getElementById('rot-y');
+      const rotZ = document.getElementById('rot-z');
+      if (rotX) rotX.value = info.rotation.x;
+      if (rotY) rotY.value = info.rotation.y;
+      if (rotZ) rotZ.value = info.rotation.z;
+      
+      const scaleX = document.getElementById('scale-x');
+      const scaleY = document.getElementById('scale-y');
+      const scaleZ = document.getElementById('scale-z');
+      if (scaleX) scaleX.value = info.scale.x;
+      if (scaleY) scaleY.value = info.scale.y;
+      if (scaleZ) scaleZ.value = info.scale.z;
+    }
+    
+    const sectionMesh = document.getElementById('section-mesh');
+    if (sectionMesh) {
+      if (info.material && !info.isLight) {
+        sectionMesh.style.display = 'block';
+      } else {
+        sectionMesh.style.display = 'none';
+      }
+    }
+    
+    const sectionMaterial = document.getElementById('section-material');
+    if (sectionMaterial) {
+      if (info.material && !info.isLight) {
+        sectionMaterial.style.display = 'block';
+        
+        const materialColor = document.getElementById('material-color');
+        const colorPreview = document.getElementById('color-preview');
+        if (materialColor) materialColor.value = info.material.color;
+        if (colorPreview) colorPreview.style.backgroundColor = info.material.color;
+        
+        const materialRoughness = document.getElementById('material-roughness');
+        const roughnessValue = document.getElementById('roughness-value');
+        if (materialRoughness) materialRoughness.value = info.material.roughness;
+        if (roughnessValue) roughnessValue.textContent = info.material.roughness.toFixed(2);
+        
+        const materialMetalness = document.getElementById('material-metalness');
+        const metalnessValue = document.getElementById('metalness-value');
+        if (materialMetalness) materialMetalness.value = info.material.metalness;
+        if (metalnessValue) metalnessValue.textContent = info.material.metalness.toFixed(2);
+        
+        const materialOpacity = document.getElementById('material-opacity');
+        const opacityValue = document.getElementById('opacity-value');
+        if (materialOpacity) materialOpacity.value = info.material.opacity;
+        if (opacityValue) opacityValue.textContent = info.material.opacity.toFixed(2);
+      } else {
+        sectionMaterial.style.display = 'none';
+      }
+    }
+    
+    this.updateColliderPropertyPanel();
+    
+    const sectionLight = document.getElementById('section-light');
+    if (sectionLight) {
+      if (info.isLight && info.light) {
+        sectionLight.style.display = 'block';
+        
+        const lightIntensity = document.getElementById('light-intensity');
+        const lightIntensityValue = document.getElementById('light-intensity-value');
+        if (lightIntensity) lightIntensity.value = info.light.intensity;
+        if (lightIntensityValue) lightIntensityValue.textContent = info.light.intensity.toFixed(1);
+        
+        const lightColor = document.getElementById('light-color');
+        const lightColorPreview = document.getElementById('light-color-preview');
+        if (lightColor) lightColor.value = info.light.color;
+        if (lightColorPreview) lightColorPreview.style.backgroundColor = info.light.color;
+      } else {
+        sectionLight.style.display = 'none';
+      }
+    }
+    
+    const sectionAddComponent = document.getElementById('section-add-component');
+    if (sectionAddComponent) {
+      sectionAddComponent.style.display = 'block';
     }
     
     this.updateSelectionInfo(info);
   }
 
+  updateColliderPropertyPanel() {
+    const sectionCollider = document.getElementById('section-collider');
+    if (!sectionCollider) return;
+    
+    if (!this.sceneManager.selectedObject) {
+      sectionCollider.style.display = 'none';
+      return;
+    }
+    
+    const collider = this.sceneManager.getCollider(this.sceneManager.selectedObject);
+    if (!collider) {
+      sectionCollider.style.display = 'none';
+      return;
+    }
+    
+    sectionCollider.style.display = 'block';
+    
+    const colliderType = document.getElementById('collider-type');
+    const colliderStatic = document.getElementById('collider-static');
+    const colliderTrigger = document.getElementById('collider-trigger');
+    const colliderGravity = document.getElementById('collider-gravity');
+    const colliderMass = document.getElementById('collider-mass');
+    const colliderBounciness = document.getElementById('collider-bounciness');
+    const colliderFriction = document.getElementById('collider-friction');
+    
+    const colliderCenterX = document.getElementById('collider-center-x');
+    const colliderCenterY = document.getElementById('collider-center-y');
+    const colliderCenterZ = document.getElementById('collider-center-z');
+    const colliderSizeX = document.getElementById('collider-size-x');
+    const colliderSizeY = document.getElementById('collider-size-y');
+    const colliderSizeZ = document.getElementById('collider-size-z');
+    const colliderRadius = document.getElementById('collider-radius');
+    
+    if (colliderType) colliderType.value = collider.type;
+    if (colliderStatic) colliderStatic.checked = collider.isStatic;
+    if (colliderTrigger) colliderTrigger.checked = collider.isTrigger;
+    if (colliderGravity) colliderGravity.checked = collider.useGravity;
+    if (colliderMass) colliderMass.value = collider.mass;
+    if (colliderBounciness) colliderBounciness.value = collider.bounciness;
+    if (colliderFriction) colliderFriction.value = collider.friction;
+    
+    if (colliderCenterX) colliderCenterX.value = collider.center.x.toFixed(2);
+    if (colliderCenterY) colliderCenterY.value = collider.center.y.toFixed(2);
+    if (colliderCenterZ) colliderCenterZ.value = collider.center.z.toFixed(2);
+    if (colliderSizeX) colliderSizeX.value = collider.size.x.toFixed(2);
+    if (colliderSizeY) colliderSizeY.value = collider.size.y.toFixed(2);
+    if (colliderSizeZ) colliderSizeZ.value = collider.size.z.toFixed(2);
+    if (colliderRadius) colliderRadius.value = collider.radius.toFixed(2);
+    
+    const sizeRow = document.getElementById('collider-size-row');
+    const radiusRow = document.getElementById('collider-radius-row');
+    
+    if (collider.type === 'sphere') {
+      if (sizeRow) sizeRow.style.display = 'none';
+      if (radiusRow) radiusRow.style.display = 'flex';
+    } else {
+      if (sizeRow) sizeRow.style.display = 'flex';
+      if (radiusRow) radiusRow.style.display = 'none';
+    }
+  }
+
   updateSelectionInfo(info) {
     const el = document.getElementById('selection-info');
+    if (!el) return;
+    
     if (!info) {
       el.textContent = '';
       return;
@@ -437,8 +852,11 @@ class MiniGameEngine {
     const objects = this.sceneManager.objects;
     const selected = this.sceneManager.selectedObject;
     
-    document.getElementById('object-count').textContent = `物体: ${objects.length}`;
-    document.getElementById('selected-count').textContent = `选中: ${selected ? 1 : 0}`;
+    const objectCount = document.getElementById('object-count');
+    const selectedCount = document.getElementById('selected-count');
+    
+    if (objectCount) objectCount.textContent = `物体: ${objects.length}`;
+    if (selectedCount) selectedCount.textContent = `选中: ${selected ? 1 : 0}`;
   }
 
   setTool(tool) {
@@ -456,20 +874,32 @@ class MiniGameEngine {
       }
     });
     
+    const toolDisplay = document.getElementById('tool-display');
+    const currentMode = document.getElementById('current-mode');
+    
     const modeNames = {
       select: '选择模式',
       move: '移动模式',
       rotate: '旋转模式',
       scale: '缩放模式'
     };
-    document.getElementById('current-mode').textContent = modeNames[tool] || tool;
+    
+    const toolNames = {
+      select: '选择',
+      move: '移动',
+      rotate: '旋转',
+      scale: '缩放'
+    };
+    
+    if (toolDisplay) toolDisplay.textContent = toolNames[tool] || tool;
+    if (currentMode) currentMode.textContent = modeNames[tool] || tool;
   }
 
   setView(view) {
     this.currentView = view;
     this.sceneManager.setView(view);
     
-    ['perspective', 'top', 'front', 'right'].forEach(v => {
+    ['perspective', 'ortho', 'top', 'front', 'right'].forEach(v => {
       const btn = document.getElementById(`view-${v}`);
       if (btn) {
         if (v === view) {
@@ -503,32 +933,63 @@ class MiniGameEngine {
   togglePlay() {
     this.isPlaying = !this.isPlaying;
     const playBtn = document.getElementById('play-btn');
+    const pauseBtn = document.getElementById('pause-btn');
+    const stopBtn = document.getElementById('stop-btn');
     
     if (this.isPlaying) {
-      playBtn.innerHTML = '<span>⏸</span><span>暂停执行</span>';
-      playBtn.classList.remove('play');
-      playBtn.classList.add('pause');
+      if (playBtn) {
+        playBtn.style.display = 'none';
+      }
+      if (pauseBtn) {
+        pauseBtn.style.display = 'block';
+      }
+      if (stopBtn) {
+        stopBtn.style.display = 'block';
+      }
       this.startExecution();
     } else {
-      playBtn.innerHTML = '<span>▶</span><span>开始执行</span>';
-      playBtn.classList.remove('pause');
-      playBtn.classList.add('play');
+      if (playBtn) {
+        playBtn.style.display = 'block';
+      }
+      if (pauseBtn) {
+        pauseBtn.style.display = 'none';
+      }
+      if (stopBtn) {
+        stopBtn.style.display = 'none';
+      }
       this.stopExecution();
     }
   }
 
+  stopPlay() {
+    this.isPlaying = false;
+    const playBtn = document.getElementById('play-btn');
+    const pauseBtn = document.getElementById('pause-btn');
+    const stopBtn = document.getElementById('stop-btn');
+    
+    if (playBtn) playBtn.style.display = 'block';
+    if (pauseBtn) pauseBtn.style.display = 'none';
+    if (stopBtn) stopBtn.style.display = 'none';
+    
+    this.stopExecution();
+  }
+
   startExecution() {
     console.log('Starting execution...');
-    if (this.engineAPI.isConnected()) {
-      this.engineAPI.startGameLoop();
+    if (this.sceneManager) {
+      this.sceneManager.enablePhysics();
     }
+    const currentMode = document.getElementById('current-mode');
+    if (currentMode) currentMode.textContent = '游戏模式';
   }
 
   stopExecution() {
     console.log('Stopping execution...');
-    if (this.engineAPI.isConnected()) {
-      this.engineAPI.stopGameLoop();
+    if (this.sceneManager) {
+      this.sceneManager.disablePhysics();
     }
+    const currentMode = document.getElementById('current-mode');
+    if (currentMode) currentMode.textContent = '编辑模式';
   }
 
   reset() {
@@ -536,16 +997,110 @@ class MiniGameEngine {
     this.sceneManager.reset();
   }
 
+  togglePhysics() {
+    if (this.sceneManager) {
+      const enabled = this.sceneManager.togglePhysics();
+      const physicsBtn = document.getElementById('btn-physics');
+      const physicsStatus = document.getElementById('physics-status');
+      
+      if (physicsBtn) {
+        if (enabled) {
+          physicsBtn.classList.add('active');
+        } else {
+          physicsBtn.classList.remove('active');
+        }
+      }
+      
+      if (physicsStatus) {
+        physicsStatus.innerHTML = `<span>物理: ${enabled ? '开启' : '关闭'}</span>`;
+      }
+      
+      console.log(`Physics ${enabled ? 'enabled' : 'disabled'}`);
+    }
+  }
+
+  toggleDebugColliders() {
+    this.debugColliders = !this.debugColliders;
+    if (this.sceneManager) {
+      this.sceneManager.setDebugColliders(this.debugColliders);
+    }
+    
+    const debugBtn = document.getElementById('btn-debug-collider');
+    if (debugBtn) {
+      if (this.debugColliders) {
+        debugBtn.classList.add('active');
+      } else {
+        debugBtn.classList.remove('active');
+      }
+    }
+    
+    console.log(`Debug colliders ${this.debugColliders ? 'enabled' : 'disabled'}`);
+  }
+
   updateStatus(connected) {
     const statusDot = document.getElementById('status-dot');
     const statusText = document.getElementById('status-text');
     
     if (connected) {
-      statusDot.classList.remove('disconnected');
-      statusText.textContent = '已连接到Python服务器';
+      if (statusDot) statusDot.classList.remove('disconnected');
+      if (statusText) statusText.textContent = '已连接到Python服务器';
     } else {
-      statusDot.classList.add('disconnected');
-      statusText.textContent = '独立模式 (未连接)';
+      if (statusDot) statusDot.classList.add('disconnected');
+      if (statusText) statusText.textContent = '独立模式 (未连接)';
+    }
+  }
+
+  logToConsole(message, type = 'info') {
+    const consoleContent = document.getElementById('console-content');
+    if (!consoleContent) {
+      console.log(`[${type.toUpperCase()}] ${message}`);
+      return;
+    }
+    
+    const now = new Date();
+    const timeStr = `[${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}]`;
+    
+    const item = document.createElement('div');
+    item.className = `console-item ${type}`;
+    item.innerHTML = `
+      <span class="console-time">${timeStr}</span>
+      <span>${message}</span>
+    `;
+    
+    consoleContent.appendChild(item);
+    consoleContent.scrollTop = consoleContent.scrollHeight;
+    
+    const badgeMap = {
+      'info': 'console-info-count',
+      'warning': 'console-warning-count',
+      'error': 'console-error-count'
+    };
+    const badgeId = badgeMap[type];
+    if (badgeId) {
+      const badge = document.getElementById(badgeId);
+      if (badge) {
+        const currentCount = parseInt(badge.textContent) || 0;
+        badge.textContent = currentCount + 1;
+      }
+    }
+  }
+
+  setupCollisionListeners() {
+    if (this.sceneManager && this.sceneManager.collisionManager) {
+      this.sceneManager.collisionManager.onCollision = (eventType, colliderA, colliderB) => {
+        const nameA = colliderA.object ? colliderA.object.name : 'Unknown';
+        const nameB = colliderB.object ? colliderB.object.name : 'Unknown';
+        
+        const eventNames = {
+          'enter': '碰撞开始',
+          'stay': '碰撞持续',
+          'exit': '碰撞结束'
+        };
+        
+        if (eventType === 'enter') {
+          this.logToConsole(`${eventNames[eventType]}: ${nameA} <-> ${nameB}`, 'info');
+        }
+      };
     }
   }
 }

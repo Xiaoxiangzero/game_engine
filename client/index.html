@@ -12,280 +12,436 @@
     }
 
     :root {
-      --bg-primary: #1a1a2e;
-      --bg-secondary: #16213e;
-      --bg-tertiary: #0f3460;
-      --accent: #e94560;
-      --accent-hover: #ff6b81;
-      --text-primary: #eee;
-      --text-secondary: #aaa;
-      --border-color: #1a4a7a;
-      --success: #4CAF50;
-      --warning: #ff9800;
-      --error: #f44336;
+      --bg-primary: #1e1e1e;
+      --bg-secondary: #252526;
+      --bg-tertiary: #2d2d30;
+      --bg-hover: #3c3c3c;
+      --bg-active: #094771;
+      --border-color: #3c3c3c;
+      --border-light: #454545;
+      
+      --text-primary: #cccccc;
+      --text-secondary: #969696;
+      --text-bright: #ffffff;
+      --text-accent: #569cd6;
+      
+      --accent: #007acc;
+      --accent-hover: #1e90ff;
+      --accent-light: #3794ff;
+      
+      --success: #4ec9b0;
+      --warning: #dcdcaa;
+      --error: #f48771;
+      --info: #569cd6;
+      
+      --panel-width: 280px;
+      --bottom-panel-height: 200px;
+      --menu-height: 24px;
+      --toolbar-height: 36px;
+      --statusbar-height: 22px;
+      
+      --scrollbar-bg: #1e1e1e;
+      --scrollbar-thumb: #424242;
+      --scrollbar-hover: #4e4e4e;
     }
 
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-family: 'Consolas', 'Courier New', monospace, 'Segoe UI', Tahoma, sans-serif;
       background-color: var(--bg-primary);
       color: var(--text-primary);
       overflow: hidden;
       height: 100vh;
       display: flex;
       flex-direction: column;
+      font-size: 13px;
     }
 
-    /* 顶部工具栏 */
-    .top-bar {
-      background-color: var(--bg-secondary);
-      padding: 8px 16px;
+    .menu-bar {
+      height: var(--menu-height);
+      background-color: var(--bg-tertiary);
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      padding: 0 8px;
       border-bottom: 1px solid var(--border-color);
     }
 
-    .logo {
-      font-size: 18px;
-      font-weight: bold;
-      color: var(--accent);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .logo-icon {
-      width: 24px;
-      height: 24px;
-      background: linear-gradient(135deg, var(--accent), #ff6b81);
-      border-radius: 4px;
-    }
-
-    .toolbar {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .toolbar-divider {
-      width: 1px;
-      height: 24px;
-      background-color: var(--border-color);
-    }
-
-    .btn {
-      background-color: var(--bg-tertiary);
-      border: 1px solid var(--border-color);
+    .menu-item {
+      padding: 2px 10px;
+      cursor: pointer;
       color: var(--text-primary);
-      padding: 6px 12px;
+      font-size: 12px;
+      border-radius: 2px;
+      user-select: none;
+    }
+
+    .menu-item:hover {
+      background-color: var(--bg-hover);
+    }
+
+    .menu-divider {
+      width: 1px;
+      height: 16px;
+      background-color: var(--border-color);
+      margin: 0 4px;
+    }
+
+    .tool-bar {
+      height: var(--toolbar-height);
+      background-color: var(--bg-secondary);
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+      border-bottom: 1px solid var(--border-color);
+      gap: 4px;
+    }
+
+    .tool-group {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      padding: 0 4px;
+      border-right: 1px solid var(--border-color);
+    }
+
+    .tool-group:last-child {
+      border-right: none;
+    }
+
+    .tool-btn {
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: transparent;
+      border: 1px solid transparent;
       border-radius: 4px;
       cursor: pointer;
-      font-size: 13px;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      gap: 6px;
+      color: var(--text-primary);
+      font-size: 14px;
+      transition: all 0.1s;
     }
 
-    .btn:hover {
-      background-color: var(--accent);
+    .tool-btn:hover {
+      background-color: var(--bg-hover);
+      border-color: var(--border-light);
+    }
+
+    .tool-btn.active {
+      background-color: var(--bg-active);
       border-color: var(--accent);
+      color: var(--text-bright);
     }
 
-    .btn.active {
-      background-color: var(--accent);
-      border-color: var(--accent);
+    .tool-btn.play-btn {
+      color: var(--success);
     }
 
-    .btn.play {
-      background-color: var(--success);
-      border-color: var(--success);
+    .tool-btn.pause-btn {
+      color: var(--warning);
     }
 
-    .btn.play:hover {
-      background-color: #45a049;
+    .tool-btn.stop-btn {
+      color: var(--error);
     }
 
-    .btn.pause {
-      background-color: var(--warning);
-      border-color: var(--warning);
+    .tool-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
 
-    .btn-icon {
-      width: 32px;
-      padding: 6px;
-      justify-content: center;
+    .tool-divider {
+      width: 1px;
+      height: 20px;
+      background-color: var(--border-color);
+      margin: 0 2px;
     }
 
-    /* 主内容区 */
+    .tool-dropdown {
+      padding: 4px 8px;
+      padding-right: 24px;
+      background-color: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      color: var(--text-primary);
+      font-size: 12px;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .tool-dropdown:hover {
+      background-color: var(--bg-hover);
+    }
+
+    .tool-dropdown::after {
+      content: '▼';
+      position: absolute;
+      right: 6px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 8px;
+      color: var(--text-secondary);
+    }
+
     .main-container {
       display: flex;
       flex: 1;
       overflow: hidden;
     }
 
-    /* 左侧面板 */
     .left-panel {
-      width: 280px;
+      width: var(--panel-width);
       background-color: var(--bg-secondary);
-      border-right: 1px solid var(--border-color);
       display: flex;
       flex-direction: column;
+      border-right: 1px solid var(--border-color);
     }
 
-    .panel-header {
-      padding: 12px 16px;
+    .panel-tabs {
+      display: flex;
       background-color: var(--bg-tertiary);
       border-bottom: 1px solid var(--border-color);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
     }
 
-    .panel-title {
+    .panel-tab {
+      padding: 8px 16px;
+      cursor: pointer;
+      color: var(--text-secondary);
       font-size: 12px;
-      font-weight: bold;
-      color: var(--accent);
-      text-transform: uppercase;
-      letter-spacing: 1px;
+      border-bottom: 2px solid transparent;
+      user-select: none;
     }
 
-    .panel-actions {
-      display: flex;
-      gap: 4px;
+    .panel-tab:hover {
+      color: var(--text-primary);
+      background-color: var(--bg-hover);
+    }
+
+    .panel-tab.active {
+      color: var(--text-bright);
+      border-bottom-color: var(--accent);
     }
 
     .panel-content {
       flex: 1;
       overflow-y: auto;
-      padding: 8px;
+      padding: 4px;
     }
 
-    /* 场景树 */
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 8px;
+      background-color: var(--bg-tertiary);
+      border-bottom: 1px solid var(--border-color);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-secondary);
+    }
+
+    .panel-actions {
+      display: flex;
+      gap: 2px;
+    }
+
+    .action-btn {
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: transparent;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      color: var(--text-secondary);
+      font-size: 12px;
+    }
+
+    .action-btn:hover {
+      background-color: var(--bg-hover);
+      color: var(--text-primary);
+    }
+
     .scene-tree {
       list-style: none;
     }
 
-    .scene-tree-item {
-      padding: 8px 12px;
-      margin-bottom: 4px;
-      background-color: var(--bg-tertiary);
-      border-radius: 4px;
+    .tree-item {
+      padding: 4px 6px;
+      border-radius: 3px;
       cursor: pointer;
-      transition: all 0.2s;
       display: flex;
       align-items: center;
-      gap: 8px;
-      font-size: 13px;
+      gap: 6px;
+      font-size: 12px;
     }
 
-    .scene-tree-item:hover {
-      background-color: var(--border-color);
+    .tree-item:hover {
+      background-color: var(--bg-hover);
     }
 
-    .scene-tree-item.selected {
-      background-color: var(--accent);
+    .tree-item.selected {
+      background-color: var(--bg-active);
+      color: var(--text-bright);
     }
 
-    .scene-tree-item .icon {
+    .tree-icon {
       width: 16px;
       height: 16px;
-      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
     }
 
-    .scene-tree-item .eye-icon {
-      margin-left: auto;
-      opacity: 0.6;
+    .tree-expand {
+      width: 16px;
+      height: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 8px;
+      color: var(--text-secondary);
+      cursor: pointer;
     }
 
-    .scene-tree-item .eye-icon:hover {
+    .tree-expand:hover {
+      color: var(--text-primary);
+    }
+
+    .center-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background-color: #000;
+      position: relative;
+    }
+
+    .view-tabs {
+      display: flex;
+      background-color: var(--bg-tertiary);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .view-tab {
+      padding: 6px 12px;
+      padding-right: 8px;
+      cursor: pointer;
+      color: var(--text-secondary);
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid transparent;
+      border-bottom: none;
+      margin-top: -1px;
+    }
+
+    .view-tab:hover {
+      color: var(--text-primary);
+      background-color: var(--bg-hover);
+    }
+
+    .view-tab.active {
+      background-color: var(--bg-primary);
+      color: var(--text-bright);
+      border-color: var(--border-color);
+    }
+
+    .view-close {
+      width: 16px;
+      height: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      opacity: 0;
+      transition: opacity 0.1s;
+    }
+
+    .view-tab:hover .view-close {
       opacity: 1;
     }
 
-    .scene-tree-item.hidden {
-      opacity: 0.5;
-    }
-
-    /* 添加物体菜单 */
-    .add-menu {
-      position: absolute;
-      background-color: var(--bg-secondary);
-      border: 1px solid var(--border-color);
-      border-radius: 4px;
-      padding: 4px;
-      z-index: 1000;
-      min-width: 150px;
-      display: none;
-    }
-
-    .add-menu.visible {
-      display: block;
-    }
-
-    .add-menu-item {
-      padding: 8px 12px;
-      cursor: pointer;
-      border-radius: 4px;
-      font-size: 13px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .add-menu-item:hover {
-      background-color: var(--accent);
-    }
-
-    /* 中间3D视图 */
-    .center-panel {
-      flex: 1;
-      position: relative;
-      background-color: #000;
+    .view-close:hover {
+      background-color: var(--error);
+      border-radius: 2px;
     }
 
     #canvas-container {
       width: 100%;
-      height: 100%;
+      flex: 1;
     }
 
-    /* 视图工具栏 */
     .view-toolbar {
       position: absolute;
-      top: 16px;
-      left: 16px;
+      top: 48px;
+      left: 8px;
       display: flex;
       gap: 4px;
       z-index: 10;
     }
 
     .view-btn {
-      background-color: rgba(22, 33, 62, 0.9);
+      padding: 4px 10px;
+      background-color: rgba(37, 37, 38, 0.9);
       border: 1px solid var(--border-color);
+      border-radius: 3px;
       color: var(--text-primary);
-      padding: 6px 10px;
-      border-radius: 4px;
+      font-size: 11px;
       cursor: pointer;
-      font-size: 12px;
-      transition: all 0.2s;
+      transition: all 0.1s;
     }
 
     .view-btn:hover {
-      background-color: var(--accent);
-      border-color: var(--accent);
+      background-color: var(--bg-hover);
+      border-color: var(--accent-light);
     }
 
     .view-btn.active {
-      background-color: var(--accent);
+      background-color: var(--bg-active);
       border-color: var(--accent);
     }
 
-    /* 右侧属性面板 */
+    .selection-info {
+      position: absolute;
+      bottom: 8px;
+      left: 8px;
+      background-color: rgba(37, 37, 38, 0.9);
+      border: 1px solid var(--border-color);
+      padding: 4px 8px;
+      border-radius: 3px;
+      font-size: 11px;
+      color: var(--text-primary);
+      z-index: 10;
+    }
+
+    .selection-info:empty {
+      display: none;
+    }
+
+    .gizmo-display {
+      position: absolute;
+      bottom: 8px;
+      right: 8px;
+      background-color: rgba(37, 37, 38, 0.9);
+      border: 1px solid var(--border-color);
+      padding: 4px 8px;
+      border-radius: 3px;
+      font-size: 11px;
+      color: var(--text-secondary);
+      z-index: 10;
+    }
+
     .right-panel {
-      width: 320px;
+      width: var(--panel-width);
       background-color: var(--bg-secondary);
-      border-left: 1px solid var(--border-color);
       display: flex;
       flex-direction: column;
+      border-left: 1px solid var(--border-color);
     }
 
     .property-section {
@@ -293,45 +449,49 @@
     }
 
     .section-header {
-      padding: 10px 16px;
+      padding: 6px 8px;
       background-color: var(--bg-tertiary);
       display: flex;
       align-items: center;
       justify-content: space-between;
       cursor: pointer;
+      font-size: 12px;
+      user-select: none;
     }
 
     .section-header:hover {
-      background-color: var(--border-color);
+      background-color: var(--bg-hover);
     }
 
     .section-title {
-      font-size: 12px;
-      font-weight: bold;
-      color: var(--text-secondary);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-primary);
     }
 
     .section-content {
-      padding: 12px 16px;
+      padding: 8px;
+      background-color: var(--bg-secondary);
     }
 
     .section-content.collapsed {
       display: none;
     }
 
-    /* 属性行 */
     .property-row {
       display: flex;
-      align-items: center;
-      margin-bottom: 10px;
+      align-items: flex-start;
+      margin-bottom: 6px;
+      min-height: 24px;
     }
 
     .property-label {
       width: 70px;
+      padding: 4px 0;
       font-size: 12px;
       color: var(--text-secondary);
+      flex-shrink: 0;
     }
 
     .property-input-group {
@@ -342,13 +502,13 @@
 
     .property-input {
       flex: 1;
-      padding: 6px 8px;
+      padding: 3px 6px;
       background-color: var(--bg-tertiary);
       border: 1px solid var(--border-color);
-      border-radius: 4px;
+      border-radius: 2px;
       color: var(--text-primary);
       font-size: 12px;
-      transition: border-color 0.2s;
+      font-family: inherit;
     }
 
     .property-input:focus {
@@ -356,16 +516,9 @@
       border-color: var(--accent);
     }
 
-    .property-input.vector {
-      text-align: right;
-    }
-
-    .vector-label {
-      position: absolute;
-      left: 4px;
-      font-size: 11px;
-      color: var(--accent);
-      font-weight: bold;
+    .property-input:disabled {
+      background-color: var(--bg-primary);
+      color: var(--text-secondary);
     }
 
     .vector-wrapper {
@@ -377,29 +530,59 @@
       padding-left: 20px;
     }
 
-    /* 颜色选择器 */
+    .vector-label {
+      position: absolute;
+      left: 4px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 10px;
+      color: var(--accent);
+      font-weight: bold;
+    }
+
     .color-picker-wrapper {
       flex: 1;
       display: flex;
-      gap: 8px;
+      gap: 6px;
       align-items: center;
     }
 
     .color-preview {
-      width: 36px;
-      height: 24px;
-      border-radius: 4px;
+      width: 40px;
+      height: 22px;
+      border-radius: 2px;
       border: 1px solid var(--border-color);
       cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .color-preview::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: 
+        linear-gradient(45deg, #555 25%, transparent 25%),
+        linear-gradient(-45deg, #555 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #555 75%),
+        linear-gradient(-45deg, transparent 75%, #555 75%);
+      background-size: 8px 8px;
+      background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
+      z-index: -1;
+    }
+
+    .color-input-wrapper {
+      position: relative;
     }
 
     input[type="color"] {
       opacity: 0;
       position: absolute;
+      width: 100%;
+      height: 100%;
       cursor: pointer;
     }
 
-    /* 滑块 */
     .slider-wrapper {
       flex: 1;
       display: flex;
@@ -418,30 +601,37 @@
 
     input[type="range"]::-webkit-slider-thumb {
       -webkit-appearance: none;
-      width: 14px;
-      height: 14px;
+      width: 12px;
+      height: 12px;
       background: var(--accent);
       border-radius: 50%;
       cursor: pointer;
     }
 
+    input[type="range"]::-webkit-slider-thumb:hover {
+      background: var(--accent-hover);
+    }
+
     .slider-value {
       min-width: 40px;
       text-align: right;
-      font-size: 12px;
+      font-size: 11px;
       color: var(--text-secondary);
     }
 
-    /* 下拉选择 */
     .property-select {
       flex: 1;
-      padding: 6px 8px;
+      padding: 3px 6px;
+      padding-right: 24px;
       background-color: var(--bg-tertiary);
       border: 1px solid var(--border-color);
-      border-radius: 4px;
+      border-radius: 2px;
       color: var(--text-primary);
       font-size: 12px;
+      font-family: inherit;
       cursor: pointer;
+      appearance: none;
+      position: relative;
     }
 
     .property-select:focus {
@@ -449,26 +639,37 @@
       border-color: var(--accent);
     }
 
-    /* 材质预设 */
+    .select-wrapper {
+      position: relative;
+      flex: 1;
+    }
+
+    .select-wrapper::after {
+      content: '▼';
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 8px;
+      color: var(--text-secondary);
+      pointer-events: none;
+    }
+
     .material-presets {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 6px;
+      gap: 4px;
       margin-top: 8px;
     }
 
     .material-preset {
       width: 100%;
       aspect-ratio: 1;
-      border-radius: 4px;
+      border-radius: 3px;
       cursor: pointer;
       border: 2px solid transparent;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 10px;
-      color: rgba(255,255,255,0.7);
+      transition: all 0.1s;
+      position: relative;
     }
 
     .material-preset:hover {
@@ -478,103 +679,9 @@
 
     .material-preset.selected {
       border-color: var(--accent);
-      box-shadow: 0 0 0 2px var(--accent);
+      box-shadow: 0 0 0 1px var(--accent);
     }
 
-    /* 底部状态栏 */
-    .bottom-bar {
-      background-color: var(--bg-secondary);
-      padding: 6px 16px;
-      border-top: 1px solid var(--border-color);
-      font-size: 11px;
-      color: var(--text-secondary);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .status-indicator {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background-color: var(--success);
-    }
-
-    .status-dot.disconnected {
-      background-color: var(--error);
-    }
-
-    .status-text {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-
-    .mode-indicator {
-      background-color: var(--bg-tertiary);
-      padding: 2px 8px;
-      border-radius: 4px;
-      font-size: 10px;
-    }
-
-    /* 提示框 */
-    .tooltip {
-      position: absolute;
-      background-color: var(--bg-tertiary);
-      border: 1px solid var(--border-color);
-      padding: 6px 10px;
-      border-radius: 4px;
-      font-size: 11px;
-      color: var(--text-primary);
-      pointer-events: none;
-      z-index: 1000;
-      display: none;
-    }
-
-    /* 选中物体高亮提示 */
-    .selection-info {
-      position: absolute;
-      bottom: 16px;
-      left: 16px;
-      background-color: rgba(22, 33, 62, 0.9);
-      border: 1px solid var(--border-color);
-      padding: 8px 12px;
-      border-radius: 4px;
-      font-size: 12px;
-      color: var(--text-primary);
-      z-index: 10;
-    }
-
-    .selection-info:empty {
-      display: none;
-    }
-
-    /* 滚动条样式 */
-    ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
-    }
-
-    ::-webkit-scrollbar-track {
-      background: var(--bg-primary);
-    }
-
-    ::-webkit-scrollbar-thumb {
-      background: var(--bg-tertiary);
-      border-radius: 3px;
-    }
-
-    ::-webkit-scrollbar-thumb:hover {
-      background: var(--border-color);
-    }
-
-    /* 空状态 */
     .empty-state {
       text-align: center;
       padding: 40px 20px;
@@ -583,133 +690,519 @@
     }
 
     .empty-state-icon {
-      font-size: 32px;
-      margin-bottom: 12px;
+      font-size: 28px;
+      margin-bottom: 8px;
+      opacity: 0.4;
+    }
+
+    .bottom-panel {
+      height: var(--bottom-panel-height);
+      background-color: var(--bg-secondary);
+      display: flex;
+      flex-direction: column;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .console-tabs {
+      display: flex;
+      background-color: var(--bg-tertiary);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .console-tab {
+      padding: 6px 12px;
+      cursor: pointer;
+      color: var(--text-secondary);
+      font-size: 12px;
+      border-bottom: 2px solid transparent;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .console-tab:hover {
+      color: var(--text-primary);
+      background-color: var(--bg-hover);
+    }
+
+    .console-tab.active {
+      color: var(--text-bright);
+      border-bottom-color: var(--accent);
+    }
+
+    .console-badge {
+      padding: 1px 5px;
+      border-radius: 8px;
+      font-size: 10px;
+      font-weight: bold;
+    }
+
+    .console-badge.info {
+      background-color: var(--accent);
+      color: var(--text-bright);
+    }
+
+    .console-badge.warning {
+      background-color: var(--warning);
+      color: var(--bg-primary);
+    }
+
+    .console-badge.error {
+      background-color: var(--error);
+      color: var(--text-bright);
+    }
+
+    .console-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 4px 8px;
+      background-color: var(--bg-tertiary);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .console-actions {
+      display: flex;
+      gap: 4px;
+    }
+
+    .console-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 4px;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 12px;
+    }
+
+    .console-item {
+      padding: 2px 4px;
+      border-radius: 2px;
+      margin-bottom: 1px;
+      display: flex;
+      gap: 8px;
+    }
+
+    .console-item:hover {
+      background-color: var(--bg-hover);
+    }
+
+    .console-item.info {
+      color: var(--text-primary);
+    }
+
+    .console-item.warning {
+      color: var(--warning);
+    }
+
+    .console-item.error {
+      color: var(--error);
+    }
+
+    .console-time {
+      color: var(--text-secondary);
+      font-size: 10px;
+      flex-shrink: 0;
+    }
+
+    .status-bar {
+      height: var(--statusbar-height);
+      background-color: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 10px;
+      font-size: 11px;
+      color: var(--text-bright);
+    }
+
+    .status-left, .status-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background-color: var(--success);
+    }
+
+    .status-dot.disconnected {
+      background-color: var(--error);
+    }
+
+    .mode-indicator {
+      background-color: rgba(255,255,255,0.15);
+      padding: 2px 8px;
+      border-radius: 2px;
+    }
+
+    .resize-handle {
+      position: absolute;
+      z-index: 100;
+      background: transparent;
+    }
+
+    .resize-handle:hover {
+      background: var(--accent);
+      opacity: 0.3;
+    }
+
+    .resize-vertical {
+      width: 4px;
+      cursor: col-resize;
+      top: 0;
+      bottom: 0;
+    }
+
+    .resize-horizontal {
+      height: 4px;
+      cursor: row-resize;
+      left: 0;
+      right: 0;
+    }
+
+    .dropdown-menu {
+      position: absolute;
+      background-color: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      padding: 4px;
+      z-index: 1000;
+      min-width: 180px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    }
+
+    .dropdown-item {
+      padding: 6px 10px;
+      cursor: pointer;
+      border-radius: 2px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text-primary);
+    }
+
+    .dropdown-item:hover {
+      background-color: var(--bg-hover);
+    }
+
+    .dropdown-item.disabled {
       opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .dropdown-divider {
+      height: 1px;
+      background-color: var(--border-color);
+      margin: 4px 0;
+    }
+
+    .dropdown-shortcut {
+      color: var(--text-secondary);
+      font-size: 11px;
+      margin-left: 20px;
+    }
+
+    .add-menu {
+      position: absolute;
+      background-color: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      padding: 4px;
+      z-index: 1000;
+      min-width: 160px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      display: none;
+    }
+
+    .add-menu.visible {
+      display: block;
+    }
+
+    .add-menu-item {
+      padding: 6px 10px;
+      cursor: pointer;
+      border-radius: 2px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--text-primary);
+    }
+
+    .add-menu-item:hover {
+      background-color: var(--bg-active);
+      color: var(--text-bright);
+    }
+
+    .add-menu-icon {
+      width: 16px;
+      text-align: center;
+    }
+
+    ::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--scrollbar-bg);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--scrollbar-thumb);
+      border-radius: 5px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--scrollbar-hover);
+    }
+
+    ::-webkit-scrollbar-corner {
+      background: var(--scrollbar-bg);
+    }
+
+    .component-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 4px 8px;
+      background-color: var(--bg-tertiary);
+      border-radius: 3px;
+      margin-bottom: 4px;
+    }
+
+    .component-title {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-primary);
+    }
+
+    .component-actions {
+      display: flex;
+      gap: 2px;
+    }
+
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    input[type="checkbox"] {
+      width: 14px;
+      height: 14px;
+      cursor: pointer;
+      accent-color: var(--accent);
+    }
+
+    .toggle-switch {
+      position: relative;
+      width: 36px;
+      height: 18px;
+      background-color: var(--bg-tertiary);
+      border-radius: 9px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      border: 1px solid var(--border-color);
+    }
+
+    .toggle-switch.active {
+      background-color: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .toggle-switch::after {
+      content: '';
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      background-color: var(--text-primary);
+      border-radius: 50%;
+      top: 1px;
+      left: 1px;
+      transition: transform 0.2s;
+    }
+
+    .toggle-switch.active::after {
+      transform: translateX(18px);
+      background-color: var(--text-bright);
     }
   </style>
 </head>
 <body>
-  <!-- 顶部工具栏 -->
-  <div class="top-bar">
-    <div class="logo">
-      <div class="logo-icon"></div>
-      <span>Mini Game Engine</span>
+  <div class="menu-bar">
+    <div class="menu-item">文件(F)</div>
+    <div class="menu-item">编辑(E)</div>
+    <div class="menu-item">视图(V)</div>
+    <div class="menu-item">游戏(G)</div>
+    <div class="menu-item">组件(C)</div>
+    <div class="menu-item">工具(T)</div>
+    <div class="menu-divider"></div>
+    <div class="menu-item">窗口(W)</div>
+    <div class="menu-item">帮助(H)</div>
+  </div>
+
+  <div class="tool-bar">
+    <div class="tool-group">
+      <button class="tool-btn active" id="tool-select" title="选择工具 (Q)">⬚</button>
+      <button class="tool-btn" id="tool-move" title="移动工具 (W)">✥</button>
+      <button class="tool-btn" id="tool-rotate" title="旋转工具 (E)">⟳</button>
+      <button class="tool-btn" id="tool-scale" title="缩放工具 (R)">⤡</button>
     </div>
-    
-    <div class="toolbar">
-      <!-- 变换工具 -->
-      <button class="btn btn-icon active" id="tool-select" title="选择工具 (Q)">
-        <span>⬚</span>
-      </button>
-      <button class="btn btn-icon" id="tool-move" title="移动工具 (W)">
-        <span>✥</span>
-      </button>
-      <button class="btn btn-icon" id="tool-rotate" title="旋转工具 (E)">
-        <span>⟳</span>
-      </button>
-      <button class="btn btn-icon" id="tool-scale" title="缩放工具 (R)">
-        <span>⤡</span>
-      </button>
-      
-      <div class="toolbar-divider"></div>
-      
-      <!-- 添加物体 -->
-      <button class="btn" id="btn-add-cube">
-        <span>▢</span>
-        <span>立方体</span>
-      </button>
-      <button class="btn" id="btn-add-sphere">
-        <span>●</span>
-        <span>球体</span>
-      </button>
-      <button class="btn" id="btn-add-cylinder">
-        <span>◎</span>
-        <span>圆柱体</span>
-      </button>
-      <button class="btn" id="btn-add-plane">
-        <span>▬</span>
-        <span>平面</span>
-      </button>
-      <button class="btn" id="btn-add-light">
-        <span>☀</span>
-        <span>灯光</span>
-      </button>
-      
-      <div class="toolbar-divider"></div>
-      
-      <!-- 删除按钮 -->
-      <button class="btn" id="btn-delete" title="删除选中物体 (Delete)">
-        <span>🗑</span>
-        <span>删除</span>
-      </button>
-      
-      <!-- 复制按钮 -->
-      <button class="btn" id="btn-duplicate" title="复制选中物体 (Ctrl+D)">
-        <span>⧉</span>
-        <span>复制</span>
-      </button>
-      
-      <div class="toolbar-divider"></div>
-      
-      <!-- 播放控制 -->
-      <button class="btn play" id="play-btn" title="开始执行">
-        <span>▶</span>
-        <span>开始执行</span>
-      </button>
-      <button class="btn" id="reset-btn" title="重置场景">
-        <span>↺</span>
-        <span>重置</span>
-      </button>
+
+    <div class="tool-divider"></div>
+
+    <div class="tool-group">
+      <button class="tool-btn" id="btn-add-cube" title="添加立方体">▢</button>
+      <button class="tool-btn" id="btn-add-sphere" title="添加球体">●</button>
+      <button class="tool-btn" id="btn-add-cylinder" title="添加圆柱体">◎</button>
+      <button class="tool-btn" id="btn-add-plane" title="添加平面">▬</button>
+      <button class="tool-btn" id="btn-add-light" title="添加灯光">☀</button>
+      <button class="tool-btn" id="btn-add-camera" title="添加相机">📷</button>
+    </div>
+
+    <div class="tool-divider"></div>
+
+    <div class="tool-group">
+      <button class="tool-btn" id="btn-duplicate" title="复制选中 (Ctrl+D)">⧉</button>
+      <button class="tool-btn" id="btn-delete" title="删除选中 (Delete)">🗑</button>
+    </div>
+
+    <div class="tool-divider"></div>
+
+    <div class="tool-group">
+      <button class="tool-btn" id="btn-parent" title="设置父级">👆</button>
+      <button class="tool-btn" id="btn-unparent" title="解除父级">👇</button>
+    </div>
+
+    <div class="tool-divider"></div>
+
+    <div class="tool-group">
+      <button class="tool-btn play-btn active" id="play-btn" title="播放 (F5)">▶</button>
+      <button class="tool-btn pause-btn" id="pause-btn" title="暂停 (F6)" style="display:none;">⏸</button>
+      <button class="tool-btn stop-btn" id="stop-btn" title="停止 (F7)" style="display:none;">⏹</button>
+    </div>
+
+    <div class="tool-divider"></div>
+
+    <div class="tool-group">
+      <button class="tool-btn" id="btn-physics" title="物理开关">⚛</button>
+      <button class="tool-btn" id="btn-debug-collider" title="碰撞体调试">🔲</button>
+    </div>
+
+    <div class="tool-divider"></div>
+
+    <div class="tool-group">
+      <button class="tool-btn" id="btn-save" title="保存场景 (Ctrl+S)">💾</button>
+      <button class="tool-btn" id="btn-load" title="加载场景">📂</button>
+    </div>
+
+    <div class="tool-group" style="margin-left: auto;">
+      <div class="tool-dropdown" id="layer-dropdown">默认</div>
+      <div class="tool-dropdown" id="snap-dropdown">关闭</div>
     </div>
   </div>
 
-  <!-- 主内容区 -->
   <div class="main-container">
-    <!-- 左侧面板 - 场景层级 -->
-    <div class="left-panel">
-      <div class="panel-header">
-        <span class="panel-title">场景层级</span>
-        <div class="panel-actions">
-          <button class="btn btn-icon" id="btn-add-object" title="添加物体">
-            <span>+</span>
-          </button>
-        </div>
+    <div class="left-panel" id="left-panel">
+      <div class="panel-tabs">
+        <div class="panel-tab active" data-panel="hierarchy">场景层级</div>
+        <div class="panel-tab" data-panel="project">资源浏览器</div>
       </div>
-      <div class="panel-content">
+
+      <div class="panel-content" id="hierarchy-panel">
+        <div class="panel-header">
+          <span>场景</span>
+          <div class="panel-actions">
+            <button class="action-btn" id="btn-add-object" title="添加物体">+</button>
+            <button class="action-btn" id="btn-expand-all" title="展开全部">▼</button>
+          </div>
+        </div>
         <ul class="scene-tree" id="scene-tree">
-          <!-- 动态填充 -->
         </ul>
       </div>
-      
-      <!-- 材质库 -->
-      <div class="panel-header">
-        <span class="panel-title">材质库</span>
+
+      <div class="panel-content" id="project-panel" style="display: none;">
+        <div class="panel-header">
+          <span>资源</span>
+          <div class="panel-actions">
+            <button class="action-btn" id="btn-import" title="导入资源">+</button>
+            <button class="action-btn" id="btn-refresh" title="刷新">↻</button>
+          </div>
+        </div>
+        <div class="empty-state">
+          <div class="empty-state-icon">📁</div>
+          <div>资源浏览器</div>
+          <div style="margin-top: 8px; font-size: 11px; opacity: 0.7;">
+            导入资源以开始使用
+          </div>
+        </div>
       </div>
-      <div class="panel-content">
+
+      <div class="panel-header">
+        <span>材质库</span>
+      </div>
+      <div class="panel-content" style="flex: none; padding: 8px;">
         <div class="material-presets" id="material-presets">
-          <!-- 动态填充 -->
         </div>
       </div>
     </div>
 
-    <!-- 中间3D视图 -->
-    <div class="center-panel">
+    <div class="center-area">
+      <div class="view-tabs">
+        <div class="view-tab active">
+          <span>场景</span>
+          <div class="view-close" title="关闭">×</div>
+        </div>
+        <div class="view-tab">
+          <span>游戏</span>
+          <div class="view-close" title="关闭">×</div>
+        </div>
+      </div>
+
       <div class="view-toolbar">
         <button class="view-btn active" id="view-perspective">透视</button>
+        <button class="view-btn" id="view-ortho">正交</button>
         <button class="view-btn" id="view-top">顶</button>
         <button class="view-btn" id="view-front">前</button>
         <button class="view-btn" id="view-right">右</button>
-        <button class="view-btn" id="view-reset">重置视图</button>
+        <button class="view-btn" id="view-reset">重置</button>
       </div>
-      
+
       <div id="canvas-container"></div>
-      
+
       <div class="selection-info" id="selection-info"></div>
+      <div class="gizmo-display" id="gizmo-display">
+        <span id="tool-display">选择</span> | 
+        <span id="coordinate-display">世界</span>
+      </div>
     </div>
 
-    <!-- 右侧属性面板 -->
     <div class="right-panel" id="properties-panel">
+      <div class="panel-tabs">
+        <div class="panel-tab active">属性</div>
+      </div>
+
       <div class="empty-state" id="no-selection">
         <div class="empty-state-icon">📦</div>
         <div>选择一个物体查看属性</div>
@@ -717,11 +1210,16 @@
           点击场景中的物体或在场景树中选择
         </div>
       </div>
-      
-      <!-- 物体名称 -->
+
       <div class="property-section" id="section-name" style="display: none;">
-        <div class="section-header">
-          <span class="section-title">物体</span>
+        <div class="component-header">
+          <div class="component-title">
+            <span>📦</span>
+            <span id="obj-name-display">物体</span>
+          </div>
+          <div class="component-actions">
+            <div class="toggle-switch" id="obj-active-toggle"></div>
+          </div>
         </div>
         <div class="section-content">
           <div class="property-row">
@@ -729,20 +1227,44 @@
             <input type="text" class="property-input" id="obj-name" placeholder="物体名称">
           </div>
           <div class="property-row">
-            <span class="property-label">类型</span>
-            <span class="property-input" style="background: transparent; border: none; padding: 0;" id="obj-type">-</span>
+            <span class="property-label">标签</span>
+            <div class="select-wrapper">
+              <select class="property-select" id="obj-tag">
+                <option>Default</option>
+                <option>Player</option>
+                <option>Enemy</option>
+                <option>Item</option>
+                <option>Ground</option>
+              </select>
+            </div>
+          </div>
+          <div class="property-row">
+            <span class="property-label">层</span>
+            <div class="select-wrapper">
+              <select class="property-select" id="obj-layer">
+                <option>默认</option>
+                <option>UI</option>
+                <option>忽略射线</option>
+                <option>水</option>
+              </select>
+            </div>
+          </div>
+          <div class="property-row">
+            <span class="property-label">静态</span>
+            <label class="checkbox-label">
+              <input type="checkbox" id="obj-static">
+              <span>标记为静态</span>
+            </label>
           </div>
         </div>
       </div>
-      
-      <!-- 变换 -->
+
       <div class="property-section" id="section-transform" style="display: none;">
         <div class="section-header" onclick="toggleSection(this)">
           <span class="section-title">变换</span>
           <span>▼</span>
         </div>
         <div class="section-content">
-          <!-- 位置 -->
           <div class="property-row">
             <span class="property-label">位置</span>
             <div class="property-input-group">
@@ -761,7 +1283,6 @@
             </div>
           </div>
           
-          <!-- 旋转 -->
           <div class="property-row">
             <span class="property-label">旋转</span>
             <div class="property-input-group">
@@ -780,7 +1301,6 @@
             </div>
           </div>
           
-          <!-- 缩放 -->
           <div class="property-row">
             <span class="property-label">缩放</span>
             <div class="property-input-group">
@@ -800,8 +1320,35 @@
           </div>
         </div>
       </div>
-      
-      <!-- 材质 -->
+
+      <div class="property-section" id="section-mesh" style="display: none;">
+        <div class="section-header" onclick="toggleSection(this)">
+          <span class="section-title">网格渲染器</span>
+          <span>▼</span>
+        </div>
+        <div class="section-content">
+          <div class="property-row">
+            <span class="property-label">网格</span>
+            <div class="property-input" id="mesh-name" style="background: var(--bg-tertiary); padding: 4px 6px;">-</div>
+          </div>
+          <div class="property-row">
+            <span class="property-label">材质</span>
+            <div class="property-input" id="mesh-material" style="background: var(--bg-tertiary); padding: 4px 6px;">-</div>
+          </div>
+          <div class="property-row">
+            <span class="property-label">阴影</span>
+            <label class="checkbox-label">
+              <input type="checkbox" id="mesh-cast-shadow" checked>
+              <span>投射阴影</span>
+            </label>
+            <label class="checkbox-label" style="margin-left: 12px;">
+              <input type="checkbox" id="mesh-receive-shadow" checked>
+              <span>接收阴影</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
       <div class="property-section" id="section-material" style="display: none;">
         <div class="section-header" onclick="toggleSection(this)">
           <span class="section-title">材质</span>
@@ -811,8 +1358,9 @@
           <div class="property-row">
             <span class="property-label">颜色</span>
             <div class="color-picker-wrapper">
-              <div class="color-preview" id="color-preview" style="background-color: #ff0000;"></div>
-              <input type="color" class="property-input" id="material-color" value="#ff0000">
+              <div class="color-preview" id="color-preview" style="background-color: #ff4444;">
+                <input type="color" id="material-color" value="#ff4444">
+              </div>
             </div>
           </div>
           
@@ -820,14 +1368,13 @@
             <span class="property-label">预设</span>
           </div>
           <div class="material-presets" id="obj-material-presets">
-            <!-- 动态填充 -->
           </div>
           
           <div class="property-row" style="margin-top: 12px;">
             <span class="property-label">粗糙度</span>
             <div class="slider-wrapper">
               <input type="range" id="material-roughness" min="0" max="1" step="0.01" value="0.5">
-              <span class="slider-value" id="roughness-value">0.5</span>
+              <span class="slider-value" id="roughness-value">0.50</span>
             </div>
           </div>
           
@@ -835,7 +1382,7 @@
             <span class="property-label">金属度</span>
             <div class="slider-wrapper">
               <input type="range" id="material-metalness" min="0" max="1" step="0.01" value="0.3">
-              <span class="slider-value" id="metalness-value">0.3</span>
+              <span class="slider-value" id="metalness-value">0.30</span>
             </div>
           </div>
           
@@ -843,19 +1390,138 @@
             <span class="property-label">透明度</span>
             <div class="slider-wrapper">
               <input type="range" id="material-opacity" min="0" max="1" step="0.01" value="1">
-              <span class="slider-value" id="opacity-value">1.0</span>
+              <span class="slider-value" id="opacity-value">1.00</span>
             </div>
           </div>
         </div>
       </div>
-      
-      <!-- 光照 -->
-      <div class="property-section" id="section-light" style="display: none;">
-        <div class="section-header" onclick="toggleSection(this)">
-          <span class="section-title">光照</span>
-          <span>▼</span>
+
+      <div class="property-section" id="section-collider" style="display: none;">
+        <div class="component-header">
+          <div class="component-title">
+            <span>🔲</span>
+            <span>碰撞体</span>
+          </div>
+          <div class="component-actions">
+            <button class="action-btn" id="btn-remove-collider" title="移除组件">×</button>
+          </div>
         </div>
         <div class="section-content">
+          <div class="property-row">
+            <span class="property-label">类型</span>
+            <div class="select-wrapper">
+              <select class="property-select" id="collider-type">
+                <option value="box">盒形碰撞体</option>
+                <option value="sphere">球形碰撞体</option>
+                <option value="capsule">胶囊碰撞体</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="property-row">
+            <span class="property-label">中心</span>
+            <div class="property-input-group">
+              <div class="vector-wrapper">
+                <span class="vector-label">X</span>
+                <input type="number" class="property-input vector" id="collider-center-x" value="0" step="0.1">
+              </div>
+              <div class="vector-wrapper">
+                <span class="vector-label">Y</span>
+                <input type="number" class="property-input vector" id="collider-center-y" value="0" step="0.1">
+              </div>
+              <div class="vector-wrapper">
+                <span class="vector-label">Z</span>
+                <input type="number" class="property-input vector" id="collider-center-z" value="0" step="0.1">
+              </div>
+            </div>
+          </div>
+
+          <div class="property-row" id="collider-size-row">
+            <span class="property-label">大小</span>
+            <div class="property-input-group">
+              <div class="vector-wrapper">
+                <span class="vector-label">X</span>
+                <input type="number" class="property-input vector" id="collider-size-x" value="1" step="0.1">
+              </div>
+              <div class="vector-wrapper">
+                <span class="vector-label">Y</span>
+                <input type="number" class="property-input vector" id="collider-size-y" value="1" step="0.1">
+              </div>
+              <div class="vector-wrapper">
+                <span class="vector-label">Z</span>
+                <input type="number" class="property-input vector" id="collider-size-z" value="1" step="0.1">
+              </div>
+            </div>
+          </div>
+
+          <div class="property-row" id="collider-radius-row" style="display: none;">
+            <span class="property-label">半径</span>
+            <input type="number" class="property-input" id="collider-radius" value="0.5" step="0.1">
+          </div>
+
+          <div class="property-row">
+            <span class="property-label">静态</span>
+            <label class="checkbox-label">
+              <input type="checkbox" id="collider-static">
+              <span>静态碰撞体</span>
+            </label>
+          </div>
+
+          <div class="property-row">
+            <span class="property-label">触发器</span>
+            <label class="checkbox-label">
+              <input type="checkbox" id="collider-trigger">
+              <span>是触发器</span>
+            </label>
+          </div>
+
+          <div class="property-row">
+            <span class="property-label">物理</span>
+            <label class="checkbox-label">
+              <input type="checkbox" id="collider-gravity" checked>
+              <span>使用重力</span>
+            </label>
+          </div>
+
+          <div class="property-row">
+            <span class="property-label">质量</span>
+            <input type="number" class="property-input" id="collider-mass" value="1" step="0.1" style="max-width: 100px;">
+          </div>
+
+          <div class="property-row">
+            <span class="property-label">弹性</span>
+            <input type="number" class="property-input" id="collider-bounciness" value="0.2" step="0.1" min="0" max="1" style="max-width: 100px;">
+          </div>
+
+          <div class="property-row">
+            <span class="property-label">摩擦</span>
+            <input type="number" class="property-input" id="collider-friction" value="0.5" step="0.1" min="0" max="1" style="max-width: 100px;">
+          </div>
+        </div>
+      </div>
+
+      <div class="property-section" id="section-light" style="display: none;">
+        <div class="component-header">
+          <div class="component-title">
+            <span>💡</span>
+            <span>光照</span>
+          </div>
+          <div class="component-actions">
+            <button class="action-btn" id="btn-remove-light">×</button>
+          </div>
+        </div>
+        <div class="section-content">
+          <div class="property-row">
+            <span class="property-label">类型</span>
+            <div class="select-wrapper">
+              <select class="property-select" id="light-type">
+                <option value="point">点光源</option>
+                <option value="directional">方向光</option>
+                <option value="spot">聚光灯</option>
+              </select>
+            </div>
+          </div>
+
           <div class="property-row">
             <span class="property-label">强度</span>
             <div class="slider-wrapper">
@@ -867,66 +1533,143 @@
           <div class="property-row">
             <span class="property-label">颜色</span>
             <div class="color-picker-wrapper">
-              <div class="color-preview" id="light-color-preview" style="background-color: #ffffff;"></div>
-              <input type="color" class="property-input" id="light-color" value="#ffffff">
+              <div class="color-preview" id="light-color-preview" style="background-color: #ffffff;">
+                <input type="color" id="light-color" value="#ffffff">
+              </div>
             </div>
           </div>
           
           <div class="property-row">
-            <span class="property-label">阴影</span>
-            <select class="property-select" id="light-shadow">
-              <option value="true">启用</option>
-              <option value="false">禁用</option>
-            </select>
+            <span class="property-label">范围</span>
+            <input type="number" class="property-input" id="light-range" value="20" step="1" style="max-width: 100px;">
           </div>
+
+          <div class="property-row">
+            <span class="property-label">阴影</span>
+            <div class="select-wrapper">
+              <select class="property-select" id="light-shadow">
+                <option value="true">启用</option>
+                <option value="false">禁用</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="property-section" style="display: none;" id="section-add-component">
+        <div class="section-content" style="text-align: center; padding: 12px;">
+          <button class="btn" id="btn-add-component" style="margin: 0 auto; width: auto;">
+            <span>+</span>
+            <span>添加组件</span>
+          </button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- 底部状态栏 -->
-  <div class="bottom-bar">
-    <div class="status-indicator">
-      <div class="status-dot" id="status-dot"></div>
-      <span id="status-text">独立模式</span>
+  <div class="bottom-panel" id="bottom-panel">
+    <div class="console-tabs">
+      <div class="console-tab active">
+        <span>控制台</span>
+        <span class="console-badge info" id="console-info-count">0</span>
+        <span class="console-badge warning" id="console-warning-count">0</span>
+        <span class="console-badge error" id="console-error-count">0</span>
+      </div>
+      <div class="console-tab">动画曲线</div>
+      <div class="console-tab">音频混合器</div>
     </div>
-    <div class="status-text">
-      <span id="fps-display">FPS: --</span>
-      <span id="object-count">物体: 1</span>
-      <span id="selected-count">选中: 0</span>
-      <span class="mode-indicator" id="current-mode">选择模式</span>
+
+    <div class="console-toolbar">
+      <div class="console-actions">
+        <button class="tool-btn" id="console-clear" title="清空控制台">🗑</button>
+        <button class="tool-btn active" id="console-filter-info" title="显示信息">ℹ</button>
+        <button class="tool-btn active" id="console-filter-warning" title="显示警告">⚠</button>
+        <button class="tool-btn active" id="console-filter-error" title="显示错误">✕</button>
+      </div>
+      <div class="console-actions">
+        <button class="tool-btn" id="console-collapse" title="折叠面板">▼</button>
+      </div>
     </div>
-    <div id="version-info">v1.0.0</div>
+
+    <div class="console-content" id="console-content">
+      <div class="console-item info">
+        <span class="console-time">[00:00:00]</span>
+        <span>场景管理器初始化完成</span>
+      </div>
+      <div class="console-item info">
+        <span class="console-time">[00:00:00]</span>
+        <span>碰撞体管理器初始化完成</span>
+      </div>
+      <div class="console-item info">
+        <span class="console-time">[00:00:00]</span>
+        <span>音频管理器初始化完成</span>
+      </div>
+    </div>
   </div>
 
-  <!-- 添加物体菜单 -->
+  <div class="status-bar">
+    <div class="status-left">
+      <div class="status-indicator">
+        <div class="status-dot" id="status-dot"></div>
+        <span id="status-text">独立模式</span>
+      </div>
+      <div class="status-item">
+        <span id="fps-display">FPS: --</span>
+      </div>
+      <div class="status-item">
+        <span id="object-count">物体: 0</span>
+      </div>
+      <div class="status-item">
+        <span id="selected-count">选中: 0</span>
+      </div>
+    </div>
+    
+    <div class="status-right">
+      <div class="mode-indicator" id="current-mode">编辑模式</div>
+      <div class="status-item" id="physics-status">
+        <span>物理: 关闭</span>
+      </div>
+      <div class="status-item">
+        <span id="version-info">v1.0.0</span>
+      </div>
+    </div>
+  </div>
+
   <div class="add-menu" id="add-menu">
     <div class="add-menu-item" data-type="cube">
-      <span>▢</span>
+      <span class="add-menu-icon">▢</span>
       <span>立方体</span>
     </div>
     <div class="add-menu-item" data-type="sphere">
-      <span>●</span>
+      <span class="add-menu-icon">●</span>
       <span>球体</span>
     </div>
     <div class="add-menu-item" data-type="cylinder">
-      <span>◎</span>
+      <span class="add-menu-icon">◎</span>
       <span>圆柱体</span>
     </div>
     <div class="add-menu-item" data-type="plane">
-      <span>▬</span>
+      <span class="add-menu-icon">▬</span>
       <span>平面</span>
     </div>
+    <div class="dropdown-divider"></div>
     <div class="add-menu-item" data-type="light">
-      <span>☀</span>
+      <span class="add-menu-icon">☀</span>
       <span>点光源</span>
+    </div>
+    <div class="add-menu-item" data-type="camera">
+      <span class="add-menu-icon">📷</span>
+      <span>相机</span>
+    </div>
+    <div class="add-menu-item" data-type="empty">
+      <span class="add-menu-icon">📦</span>
+      <span>空物体</span>
     </div>
   </div>
 
   <script type="module" src="/src/main.js"></script>
   
   <script>
-    // 折叠/展开面板
     function toggleSection(header) {
       const content = header.nextElementSibling;
       const icon = header.querySelector('span:last-child');

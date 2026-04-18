@@ -744,6 +744,93 @@
       box-shadow: 0 0 0 1px var(--accent);
     }
 
+    .texture-group {
+      margin-top: 12px;
+      padding: 8px;
+      background-color: var(--bg-tertiary);
+      border-radius: 4px;
+    }
+
+    .texture-group-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .texture-group-title {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .texture-group-actions {
+      display: flex;
+      gap: 4px;
+    }
+
+    .texture-preview {
+      width: 100%;
+      height: 60px;
+      background-color: var(--bg-secondary);
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: var(--text-secondary);
+      border: 1px dashed var(--border-color);
+      background-size: cover;
+      background-position: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .texture-preview.has-texture {
+      border: 1px solid var(--border-color);
+    }
+
+    .texture-slider-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 6px;
+      padding-top: 6px;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .texture-slider-row .property-label {
+      width: auto;
+      margin: 0;
+      min-width: 40px;
+    }
+
+    .texture-slider-row .slider-wrapper {
+      flex: 1;
+      margin: 0;
+    }
+
+    .texture-color-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 6px;
+      padding-top: 6px;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .texture-color-row .property-label {
+      width: auto;
+      margin: 0;
+      min-width: 40px;
+    }
+
+    .texture-hint {
+      font-size: 10px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
     .empty-state {
       text-align: center;
       padding: 40px 20px;
@@ -1587,123 +1674,109 @@
             <span class="property-label">贴图设置</span>
           </div>
           
-          <div class="property-row">
-            <span class="property-label">漫反射</span>
-            <div class="property-input-group" style="flex-direction: column; gap: 4px;">
-              <div class="file-input-wrapper" style="display: flex; gap: 4px; width: 100%;">
-                <button class="btn btn-small" id="btn-load-albedo" style="flex: 1;">导入</button>
-                <button class="btn btn-small" id="btn-clear-albedo" style="flex: 0 0 auto;">清除</button>
+          <div class="texture-group">
+            <div class="texture-group-header">
+              <span class="texture-group-title">漫反射 (Albedo)</span>
+              <div class="texture-group-actions">
+                <button class="btn btn-small" id="btn-load-albedo">导入</button>
+                <button class="btn btn-small" id="btn-clear-albedo">清除</button>
               </div>
-              <div class="texture-preview" id="albedo-preview" style="width: 100%; height: 60px; background-color: var(--bg-tertiary); border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--text-secondary); border: 1px dashed var(--border-color);">
-                无贴图
+            </div>
+            <div class="texture-preview" id="albedo-preview">无贴图</div>
+          </div>
+          
+          <div class="texture-group">
+            <div class="texture-group-header">
+              <span class="texture-group-title">法线 (Normal)</span>
+              <div class="texture-group-actions">
+                <button class="btn btn-small" id="btn-load-normal">导入</button>
+                <button class="btn btn-small" id="btn-clear-normal">清除</button>
+              </div>
+            </div>
+            <div class="texture-preview" id="normal-preview">无贴图</div>
+            <div class="texture-slider-row">
+              <span class="property-label">强度</span>
+              <div class="slider-wrapper">
+                <input type="range" id="normal-strength" min="0" max="2" step="0.1" value="1">
+                <span class="slider-value" id="normal-strength-value">1.0</span>
               </div>
             </div>
           </div>
           
-          <div class="property-row">
-            <span class="property-label">法线</span>
-            <div class="property-input-group" style="flex-direction: column; gap: 4px;">
-              <div class="file-input-wrapper" style="display: flex; gap: 4px; width: 100%;">
-                <button class="btn btn-small" id="btn-load-normal" style="flex: 1;">导入</button>
-                <button class="btn btn-small" id="btn-clear-normal" style="flex: 0 0 auto;">清除</button>
+          <div class="texture-group">
+            <div class="texture-group-header">
+              <span class="texture-group-title">金属度 (Metalness)</span>
+              <div class="texture-group-actions">
+                <button class="btn btn-small" id="btn-load-metalness">导入</button>
+                <button class="btn btn-small" id="btn-clear-metalness">清除</button>
               </div>
-              <div class="property-row" style="margin-top: 4px; margin-bottom: 0;">
-                <span class="property-label" style="font-size: 10px;">强度</span>
-                <div class="slider-wrapper">
-                  <input type="range" id="normal-strength" min="0" max="2" step="0.1" value="1">
-                  <span class="slider-value" id="normal-strength-value">1.0</span>
+            </div>
+            <div class="texture-preview" id="metalness-preview">无贴图</div>
+          </div>
+          
+          <div class="texture-group">
+            <div class="texture-group-header">
+              <span class="texture-group-title">粗糙度 (Roughness)</span>
+              <div class="texture-group-actions">
+                <button class="btn btn-small" id="btn-load-roughness">导入</button>
+                <button class="btn btn-small" id="btn-clear-roughness">清除</button>
+              </div>
+            </div>
+            <div class="texture-preview" id="roughness-preview">无贴图</div>
+          </div>
+          
+          <div class="texture-group">
+            <div class="texture-group-header">
+              <span class="texture-group-title">金属/粗糙 (Metal/Rough)</span>
+              <div class="texture-group-actions">
+                <button class="btn btn-small" id="btn-load-metalrough">导入</button>
+                <button class="btn btn-small" id="btn-clear-metalrough">清除</button>
+              </div>
+            </div>
+            <div class="texture-hint">绿色通道=粗糙度, 蓝色通道=金属度</div>
+            <div class="texture-preview" id="metalrough-preview">无贴图</div>
+          </div>
+          
+          <div class="texture-group">
+            <div class="texture-group-header">
+              <span class="texture-group-title">环境光遮蔽 (AO)</span>
+              <div class="texture-group-actions">
+                <button class="btn btn-small" id="btn-load-ao">导入</button>
+                <button class="btn btn-small" id="btn-clear-ao">清除</button>
+              </div>
+            </div>
+            <div class="texture-preview" id="ao-preview">无贴图</div>
+            <div class="texture-slider-row">
+              <span class="property-label">强度</span>
+              <div class="slider-wrapper">
+                <input type="range" id="ao-strength" min="0" max="2" step="0.1" value="1">
+                <span class="slider-value" id="ao-strength-value">1.0</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="texture-group">
+            <div class="texture-group-header">
+              <span class="texture-group-title">自发光 (Emissive)</span>
+              <div class="texture-group-actions">
+                <button class="btn btn-small" id="btn-load-emissive">导入</button>
+                <button class="btn btn-small" id="btn-clear-emissive">清除</button>
+              </div>
+            </div>
+            <div class="texture-preview" id="emissive-preview">无贴图</div>
+            <div class="texture-color-row">
+              <span class="property-label">颜色</span>
+              <div class="color-picker-wrapper">
+                <div class="color-preview" id="emissive-color-preview" style="background-color: #000000;">
+                  <input type="color" id="emissive-color" value="#000000">
                 </div>
               </div>
-              <div class="texture-preview" id="normal-preview" style="width: 100%; height: 60px; background-color: var(--bg-tertiary); border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--text-secondary); border: 1px dashed var(--border-color);">
-                无贴图
-              </div>
             </div>
-          </div>
-          
-          <div class="property-row">
-            <span class="property-label">金属度</span>
-            <div class="property-input-group" style="flex-direction: column; gap: 4px;">
-              <div class="file-input-wrapper" style="display: flex; gap: 4px; width: 100%;">
-                <button class="btn btn-small" id="btn-load-metalness" style="flex: 1;">导入</button>
-                <button class="btn btn-small" id="btn-clear-metalness" style="flex: 0 0 auto;">清除</button>
-              </div>
-              <div class="texture-preview" id="metalness-preview" style="width: 100%; height: 60px; background-color: var(--bg-tertiary); border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--text-secondary); border: 1px dashed var(--border-color);">
-                无贴图
-              </div>
-            </div>
-          </div>
-          
-          <div class="property-row">
-            <span class="property-label">粗糙度</span>
-            <div class="property-input-group" style="flex-direction: column; gap: 4px;">
-              <div class="file-input-wrapper" style="display: flex; gap: 4px; width: 100%;">
-                <button class="btn btn-small" id="btn-load-roughness" style="flex: 1;">导入</button>
-                <button class="btn btn-small" id="btn-clear-roughness" style="flex: 0 0 auto;">清除</button>
-              </div>
-              <div class="texture-preview" id="roughness-preview" style="width: 100%; height: 60px; background-color: var(--bg-tertiary); border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--text-secondary); border: 1px dashed var(--border-color);">
-                无贴图
-              </div>
-            </div>
-          </div>
-          
-          <div class="property-row">
-            <span class="property-label">金属/粗糙</span>
-            <div class="property-input-group" style="flex-direction: column; gap: 4px;">
-              <div class="file-input-wrapper" style="display: flex; gap: 4px; width: 100%;">
-                <button class="btn btn-small" id="btn-load-metalrough" style="flex: 1;">导入</button>
-                <button class="btn btn-small" id="btn-clear-metalrough" style="flex: 0 0 auto;">清除</button>
-              </div>
-              <div style="font-size: 10px; color: var(--text-secondary);">绿色通道=粗糙度, 蓝色通道=金属度</div>
-              <div class="texture-preview" id="metalrough-preview" style="width: 100%; height: 60px; background-color: var(--bg-tertiary); border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--text-secondary); border: 1px dashed var(--border-color);">
-                无贴图
-              </div>
-            </div>
-          </div>
-          
-          <div class="property-row">
-            <span class="property-label">环境光遮蔽</span>
-            <div class="property-input-group" style="flex-direction: column; gap: 4px;">
-              <div class="file-input-wrapper" style="display: flex; gap: 4px; width: 100%;">
-                <button class="btn btn-small" id="btn-load-ao" style="flex: 1;">导入</button>
-                <button class="btn btn-small" id="btn-clear-ao" style="flex: 0 0 auto;">清除</button>
-              </div>
-              <div class="property-row" style="margin-top: 4px; margin-bottom: 0;">
-                <span class="property-label" style="font-size: 10px;">强度</span>
-                <div class="slider-wrapper">
-                  <input type="range" id="ao-strength" min="0" max="2" step="0.1" value="1">
-                  <span class="slider-value" id="ao-strength-value">1.0</span>
-                </div>
-              </div>
-              <div class="texture-preview" id="ao-preview" style="width: 100%; height: 60px; background-color: var(--bg-tertiary); border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--text-secondary); border: 1px dashed var(--border-color);">
-                无贴图
-              </div>
-            </div>
-          </div>
-          
-          <div class="property-row">
-            <span class="property-label">自发光</span>
-            <div class="property-input-group" style="flex-direction: column; gap: 4px;">
-              <div class="file-input-wrapper" style="display: flex; gap: 4px; width: 100%;">
-                <button class="btn btn-small" id="btn-load-emissive" style="flex: 1;">导入</button>
-                <button class="btn btn-small" id="btn-clear-emissive" style="flex: 0 0 auto;">清除</button>
-              </div>
-              <div class="property-row" style="margin-top: 4px; margin-bottom: 0;">
-                <span class="property-label">颜色</span>
-                <div class="color-picker-wrapper">
-                  <div class="color-preview" id="emissive-color-preview" style="background-color: #000000;">
-                    <input type="color" id="emissive-color" value="#000000">
-                  </div>
-                </div>
-              </div>
-              <div class="property-row" style="margin-top: 4px; margin-bottom: 0;">
-                <span class="property-label" style="font-size: 10px;">强度</span>
-                <div class="slider-wrapper">
-                  <input type="range" id="emissive-strength" min="0" max="5" step="0.1" value="1">
-                  <span class="slider-value" id="emissive-strength-value">1.0</span>
-                </div>
-              </div>
-              <div class="texture-preview" id="emissive-preview" style="width: 100%; height: 60px; background-color: var(--bg-tertiary); border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--text-secondary); border: 1px dashed var(--border-color);">
-                无贴图
+            <div class="texture-slider-row">
+              <span class="property-label">强度</span>
+              <div class="slider-wrapper">
+                <input type="range" id="emissive-strength" min="0" max="5" step="0.1" value="1">
+                <span class="slider-value" id="emissive-strength-value">1.0</span>
               </div>
             </div>
           </div>

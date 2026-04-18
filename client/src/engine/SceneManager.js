@@ -693,6 +693,144 @@ export class SceneManager {
     }
   }
 
+  async setMaterialTexture(obj, textureType, imageSource) {
+    if (!obj || !obj.material) return false;
+    
+    return new Promise((resolve, reject) => {
+      const loader = new THREE.TextureLoader();
+      
+      const onLoad = (texture) => {
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.needsUpdate = true;
+        
+        switch (textureType) {
+          case 'albedo':
+          case 'map':
+            if (obj.material.map) obj.material.map.dispose();
+            obj.material.map = texture;
+            break;
+          case 'normal':
+            if (obj.material.normalMap) obj.material.normalMap.dispose();
+            obj.material.normalMap = texture;
+            break;
+          case 'metalness':
+            if (obj.material.metalnessMap) obj.material.metalnessMap.dispose();
+            obj.material.metalnessMap = texture;
+            break;
+          case 'roughness':
+            if (obj.material.roughnessMap) obj.material.roughnessMap.dispose();
+            obj.material.roughnessMap = texture;
+            break;
+          case 'metalRoughness':
+            if (obj.material.metalnessMap) obj.material.metalnessMap.dispose();
+            if (obj.material.roughnessMap) obj.material.roughnessMap.dispose();
+            obj.material.metalnessMap = texture;
+            obj.material.roughnessMap = texture;
+            break;
+          case 'ao':
+          case 'aoMap':
+            if (obj.material.aoMap) obj.material.aoMap.dispose();
+            obj.material.aoMap = texture;
+            break;
+          case 'emissive':
+          case 'emissiveMap':
+            if (obj.material.emissiveMap) obj.material.emissiveMap.dispose();
+            obj.material.emissiveMap = texture;
+            break;
+        }
+        
+        obj.material.needsUpdate = true;
+        resolve(texture);
+      };
+      
+      if (typeof imageSource === 'string') {
+        loader.load(imageSource, onLoad, undefined, reject);
+      } else if (imageSource instanceof File) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          loader.load(e.target.result, onLoad, undefined, reject);
+        };
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsDataURL(imageSource);
+      } else {
+        reject(new Error('Invalid image source'));
+      }
+    });
+  }
+
+  clearMaterialTexture(obj, textureType) {
+    if (!obj || !obj.material) return false;
+    
+    switch (textureType) {
+      case 'albedo':
+      case 'map':
+        if (obj.material.map) {
+          obj.material.map.dispose();
+          obj.material.map = null;
+        }
+        break;
+      case 'normal':
+        if (obj.material.normalMap) {
+          obj.material.normalMap.dispose();
+          obj.material.normalMap = null;
+        }
+        break;
+      case 'metalness':
+        if (obj.material.metalnessMap) {
+          obj.material.metalnessMap.dispose();
+          obj.material.metalnessMap = null;
+        }
+        break;
+      case 'roughness':
+        if (obj.material.roughnessMap) {
+          obj.material.roughnessMap.dispose();
+          obj.material.roughnessMap = null;
+        }
+        break;
+      case 'metalRoughness':
+        if (obj.material.metalnessMap) {
+          obj.material.metalnessMap.dispose();
+          obj.material.metalnessMap = null;
+        }
+        if (obj.material.roughnessMap) {
+          obj.material.roughnessMap.dispose();
+          obj.material.roughnessMap = null;
+        }
+        break;
+      case 'ao':
+      case 'aoMap':
+        if (obj.material.aoMap) {
+          obj.material.aoMap.dispose();
+          obj.material.aoMap = null;
+        }
+        break;
+      case 'emissive':
+      case 'emissiveMap':
+        if (obj.material.emissiveMap) {
+          obj.material.emissiveMap.dispose();
+          obj.material.emissiveMap = null;
+        }
+        break;
+    }
+    
+    obj.material.needsUpdate = true;
+    return true;
+  }
+
+  getTexturePreviewUrl(texture) {
+    if (!texture || !texture.image) return null;
+    
+    if (typeof texture.image === 'string') {
+      return texture.image;
+    } else if (texture.image instanceof HTMLImageElement) {
+      return texture.image.src;
+    } else if (texture.image instanceof HTMLCanvasElement) {
+      return texture.image.toDataURL();
+    }
+    
+    return null;
+  }
+
   updateLightProperties(obj, properties) {
     if (!obj || !obj.isLight) return;
     

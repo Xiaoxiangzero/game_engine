@@ -1391,7 +1391,7 @@
         <div class="panel-tab" id="tab-scene">场景</div>
       </div>
 
-      <div id="panel-content-properties">
+      <div class="panel-content" id="panel-content-properties">
         <div class="empty-state" id="no-selection">
           <div class="empty-state-icon">📦</div>
           <div>选择一个物体查看属性</div>
@@ -1582,6 +1582,131 @@
               <span class="slider-value" id="opacity-value">1.00</span>
             </div>
           </div>
+          
+          <div class="property-row" style="margin-top: 16px;">
+            <span class="property-label">贴图设置</span>
+          </div>
+          
+          <div class="property-row">
+            <span class="property-label">漫反射</span>
+            <div class="property-input-group" style="flex-direction: column; gap: 4px;">
+              <div class="file-input-wrapper" style="display: flex; gap: 4px; width: 100%;">
+                <button class="btn btn-small" id="btn-load-albedo" style="flex: 1;">导入</button>
+                <button class="btn btn-small" id="btn-clear-albedo" style="flex: 0 0 auto;">清除</button>
+              </div>
+              <div class="texture-preview" id="albedo-preview" style="width: 100%; height: 60px; background-color: var(--bg-tertiary); border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--text-secondary); border: 1px dashed var(--border-color);">
+                无贴图
+              </div>
+            </div>
+          </div>
+          
+          <div class="property-row">
+            <span class="property-label">法线</span>
+            <div class="property-input-group" style="flex-direction: column; gap: 4px;">
+              <div class="file-input-wrapper" style="display: flex; gap: 4px; width: 100%;">
+                <button class="btn btn-small" id="btn-load-normal" style="flex: 1;">导入</button>
+                <button class="btn btn-small" id="btn-clear-normal" style="flex: 0 0 auto;">清除</button>
+              </div>
+              <div class="property-row" style="margin-top: 4px; margin-bottom: 0;">
+                <span class="property-label" style="font-size: 10px;">强度</span>
+                <div class="slider-wrapper">
+                  <input type="range" id="normal-strength" min="0" max="2" step="0.1" value="1">
+                  <span class="slider-value" id="normal-strength-value">1.0</span>
+                </div>
+              </div>
+              <div class="texture-preview" id="normal-preview" style="width: 100%; height: 60px; background-color: var(--bg-tertiary); border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--text-secondary); border: 1px dashed var(--border-color);">
+                无贴图
+              </div>
+            </div>
+          </div>
+          
+          <div class="property-row">
+            <span class="property-label">金属度</span>
+            <div class="property-input-group" style="flex-direction: column; gap: 4px;">
+              <div class="file-input-wrapper" style="display: flex; gap: 4px; width: 100%;">
+                <button class="btn btn-small" id="btn-load-metalness" style="flex: 1;">导入</button>
+                <button class="btn btn-small" id="btn-clear-metalness" style="flex: 0 0 auto;">清除</button>
+              </div>
+              <div class="texture-preview" id="metalness-preview" style="width: 100%; height: 60px; background-color: var(--bg-tertiary); border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--text-secondary); border: 1px dashed var(--border-color);">
+                无贴图
+              </div>
+            </div>
+          </div>
+          
+          <div class="property-row">
+            <span class="property-label">粗糙度</span>
+            <div class="property-input-group" style="flex-direction: column; gap: 4px;">
+              <div class="file-input-wrapper" style="display: flex; gap: 4px; width: 100%;">
+                <button class="btn btn-small" id="btn-load-roughness" style="flex: 1;">导入</button>
+                <button class="btn btn-small" id="btn-clear-roughness" style="flex: 0 0 auto;">清除</button>
+              </div>
+              <div class="texture-preview" id="roughness-preview" style="width: 100%; height: 60px; background-color: var(--bg-tertiary); border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--text-secondary); border: 1px dashed var(--border-color);">
+                无贴图
+              </div>
+            </div>
+          </div>
+          
+          <div class="property-row">
+            <span class="property-label">金属/粗糙</span>
+            <div class="property-input-group" style="flex-direction: column; gap: 4px;">
+              <div class="file-input-wrapper" style="display: flex; gap: 4px; width: 100%;">
+                <button class="btn btn-small" id="btn-load-metalrough" style="flex: 1;">导入</button>
+                <button class="btn btn-small" id="btn-clear-metalrough" style="flex: 0 0 auto;">清除</button>
+              </div>
+              <div style="font-size: 10px; color: var(--text-secondary);">绿色通道=粗糙度, 蓝色通道=金属度</div>
+              <div class="texture-preview" id="metalrough-preview" style="width: 100%; height: 60px; background-color: var(--bg-tertiary); border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--text-secondary); border: 1px dashed var(--border-color);">
+                无贴图
+              </div>
+            </div>
+          </div>
+          
+          <div class="property-row">
+            <span class="property-label">环境光遮蔽</span>
+            <div class="property-input-group" style="flex-direction: column; gap: 4px;">
+              <div class="file-input-wrapper" style="display: flex; gap: 4px; width: 100%;">
+                <button class="btn btn-small" id="btn-load-ao" style="flex: 1;">导入</button>
+                <button class="btn btn-small" id="btn-clear-ao" style="flex: 0 0 auto;">清除</button>
+              </div>
+              <div class="property-row" style="margin-top: 4px; margin-bottom: 0;">
+                <span class="property-label" style="font-size: 10px;">强度</span>
+                <div class="slider-wrapper">
+                  <input type="range" id="ao-strength" min="0" max="2" step="0.1" value="1">
+                  <span class="slider-value" id="ao-strength-value">1.0</span>
+                </div>
+              </div>
+              <div class="texture-preview" id="ao-preview" style="width: 100%; height: 60px; background-color: var(--bg-tertiary); border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--text-secondary); border: 1px dashed var(--border-color);">
+                无贴图
+              </div>
+            </div>
+          </div>
+          
+          <div class="property-row">
+            <span class="property-label">自发光</span>
+            <div class="property-input-group" style="flex-direction: column; gap: 4px;">
+              <div class="file-input-wrapper" style="display: flex; gap: 4px; width: 100%;">
+                <button class="btn btn-small" id="btn-load-emissive" style="flex: 1;">导入</button>
+                <button class="btn btn-small" id="btn-clear-emissive" style="flex: 0 0 auto;">清除</button>
+              </div>
+              <div class="property-row" style="margin-top: 4px; margin-bottom: 0;">
+                <span class="property-label">颜色</span>
+                <div class="color-picker-wrapper">
+                  <div class="color-preview" id="emissive-color-preview" style="background-color: #000000;">
+                    <input type="color" id="emissive-color" value="#000000">
+                  </div>
+                </div>
+              </div>
+              <div class="property-row" style="margin-top: 4px; margin-bottom: 0;">
+                <span class="property-label" style="font-size: 10px;">强度</span>
+                <div class="slider-wrapper">
+                  <input type="range" id="emissive-strength" min="0" max="5" step="0.1" value="1">
+                  <span class="slider-value" id="emissive-strength-value">1.0</span>
+                </div>
+              </div>
+              <div class="texture-preview" id="emissive-preview" style="width: 100%; height: 60px; background-color: var(--bg-tertiary); border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--text-secondary); border: 1px dashed var(--border-color);">
+                无贴图
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1755,7 +1880,7 @@
       </div>
       </div>
 
-      <div id="panel-content-scene" style="display: none;">
+      <div class="panel-content" id="panel-content-scene" style="display: none;">
         <div class="property-section" id="section-skybox">
           <div class="section-header" onclick="toggleSection(this)">
             <span class="section-title">天空盒</span>
@@ -1806,10 +1931,43 @@
             </div>
             <div class="property-row" id="skybox-texture-row" style="display: none;">
               <span class="property-label">纹理</span>
-              <div class="property-input" style="background: var(--bg-tertiary); padding: 4px 6px;">
-                <button class="btn" id="btn-load-skybox" style="width: auto; padding: 4px 8px; font-size: 11px;">
-                  <span>📂</span>
-                  <span>加载纹理</span>
+              <div class="property-input-group" style="flex-direction: column; gap: 8px;">
+                <div style="display: flex; gap: 4px; width: 100%;">
+                  <button class="btn" id="btn-load-skybox-file" style="flex: 1;">
+                    <span>📂</span>
+                    <span>导入天空盒</span>
+                  </button>
+                </div>
+                <div style="font-size: 10px; color: var(--text-secondary);">支持: .hdr, .exr, .jpg, .png, .webp</div>
+                <div class="texture-preview" id="skybox-preview" style="width: 100%; height: 80px; background-color: var(--bg-tertiary); border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--text-secondary); border: 1px dashed var(--border-color);">
+                  无天空盒
+                </div>
+              </div>
+            </div>
+            
+            <div class="property-row" id="skybox-lighting-row" style="display: none; flex-direction: column; gap: 8px;">
+              <span class="property-label" style="width: 100%; border-bottom: 1px solid var(--border-color); padding-bottom: 4px; margin-bottom: 4px;">光照分析</span>
+              <div class="property-row" style="margin-bottom: 0;">
+                <span class="property-label">亮度</span>
+                <div class="property-input" style="background: var(--bg-tertiary); padding: 4px 8px; font-size: 11px;" id="lighting-brightness">
+                  -
+                </div>
+              </div>
+              <div class="property-row" style="margin-bottom: 0;">
+                <span class="property-label">色温</span>
+                <div class="property-input" style="background: var(--bg-tertiary); padding: 4px 8px; font-size: 11px;" id="lighting-temp">
+                  -
+                </div>
+              </div>
+              <div class="property-row" style="margin-bottom: 0;">
+                <span class="property-label">光源方向</span>
+                <div class="property-input" style="background: var(--bg-tertiary); padding: 4px 8px; font-size: 11px;" id="lighting-direction">
+                  -
+                </div>
+              </div>
+              <div style="display: flex; gap: 4px; margin-top: 8px;">
+                <button class="btn btn-small" id="btn-apply-skybox-lighting" style="flex: 1;">
+                  <span>应用光照</span>
                 </button>
               </div>
             </div>

@@ -15,8 +15,8 @@ export class Collider {
     
     this.velocity = new THREE.Vector3(0, 0, 0);
     this.mass = options.mass || 1;
-    this.bounciness = options.bounciness || 0.5;
-    this.friction = options.friction || 0.3;
+    this.bounciness = options.bounciness || 0.3;
+    this.friction = options.friction || 0.5;
     this.useGravity = options.useGravity !== false;
     
     if (this.type === ColliderType.BOX) {
@@ -45,7 +45,21 @@ export class Collider {
     this.onTriggerStay = null;
     this.onTriggerExit = null;
     
+    this._sleeping = false;
+    this._sleepTimer = 0;
+    
     this.updateBounds();
+  }
+  
+  get isSleeping() {
+    return this._sleeping;
+  }
+  
+  set isSleeping(value) {
+    this._sleeping = value;
+    if (!value) {
+      this._sleepTimer = 0;
+    }
   }
   
   updateBounds() {
@@ -157,7 +171,9 @@ export class Collider {
       return null;
     }
     
-    const normal = otherCenter.clone().sub(thisCenter).normalize();
+    const normal = distance > 0.0001 
+      ? otherCenter.clone().sub(thisCenter).normalize()
+      : new THREE.Vector3(0, 1, 0);
     const overlap = minDistance - distance;
     
     return {
@@ -171,9 +187,20 @@ export class Collider {
   
   _getBoxSphereCollisionInfo(other) {
     const boxCenter = this._worldCenter;
-    const boxMin = this._boundingBox.min;
-    const boxMax = this._boundingBox.max;
+    
+    const boxMin = new THREE.Vector3(
+      boxCenter.x - this.size.x / 2,
+      boxCenter.y - this.size.y / 2,
+      boxCenter.z - this.size.z / 2
+    );
+    const boxMax = new THREE.Vector3(
+      boxCenter.x + this.size.x / 2,
+      boxCenter.y + this.size.y / 2,
+      boxCenter.z + this.size.z / 2
+    );
+    
     const sphereCenter = other._worldCenter;
+    const sphereRadius = other.radius;
     
     const closestPoint = new THREE.Vector3(
       Math.max(boxMin.x, Math.min(sphereCenter.x, boxMax.x)),
@@ -181,19 +208,18 @@ export class Collider {
       Math.max(boxMin.z, Math.min(sphereCenter.z, boxMax.z))
     );
     
-    const distance = closestPoint.distanceTo(sphereCenter);
+    const distanceSq = closestPoint.distanceToSquared(sphereCenter);
     
-    if (distance >= other.radius) {
+    if (distanceSq >= sphereRadius * sphereRadius) {
       return null;
     }
     
-    const normal = sphereCenter.clone().sub(closestPoint);
-    if (normal.lengthSq() === 0) {
-      normal.set(0, 1, 0);
-    }
-    normal.normalize();
+    const distance = Math.sqrt(distanceSq);
+    const normal = distance > 0.0001
+      ? sphereCenter.clone().sub(closestPoint).normalize()
+      : new THREE.Vector3(0, 1, 0);
     
-    const overlap = other.radius - distance;
+    const overlap = sphereRadius - distance;
     
     return {
       thisCollider: this,
@@ -202,149 +228,6 @@ export class Collider {
       overlap: overlap,
       contactPoint: closestPoint
     };
-  }
-  
-  resolveCollision(other, info) {
-    if (this.isTrigger || other.isTrigger) {
-      return;
-    }
-    
-    if (this.type === ColliderType.BOX && other.type === ColliderType.BOX) {
-      this._resolveBoxBox(other, info);
-    } else if (this.type === ColliderType.SPHERE && other.type === ColliderType.SPHERE) {
-      this._resolveSphereSphere(other, info);
-    } else if (this.type === ColliderType.BOX && other.type === ColliderType.SPHERE) {
-      this._resolveBoxSphere(other, info);
-    } else if (this.type === ColliderType.SPHERE && other.type === ColliderType.BOX) {
-      other._resolveBoxSphere(this, {
-        ...info,
-        normal: info.normal.negate()
-      });
-    }
-  }
-  
-  _resolveBoxBox(other, info) {
-    const normal = info.normal;
-    const overlap = info.overlap;
-    
-    if (!this.isStatic && !other.isStatic) {
-      const totalMass = this.mass + other.mass;
-      const thisRatio = other.mass / totalMass;
-      const otherRatio = this.mass / totalMass;
-      
-      this.object.position.sub(normal.clone().multiplyScalar(overlap * thisRatio));
-      other.object.position.add(normal.clone().multiplyScalar(overlap * otherRatio));
-      
-      const relativeVelocity = this.velocity.clone().sub(other.velocity);
-      const normalVelocity = relativeVelocity.dot(normal);
-      
-      if (normalVelocity > 0) {
-        const restitution = Math.max(this.bounciness, other.bounciness);
-        const impulse = -(1 + restitution) * normalVelocity * this.mass * other.mass / totalMass;
-        
-        this.velocity.add(normal.clone().multiplyScalar(impulse / this.mass));
-        other.velocity.add(normal.clone().multiplyScalar(-impulse / other.mass));
-        
-        const friction = Math.min(this.friction, other.friction);
-        if (friction > 0) {
-          const tangent = relativeVelocity.clone().sub(normal.clone().multiplyScalar(normalVelocity));
-          const tangentSpeed = tangent.length();
-          
-          if (tangentSpeed > 0.001) {
-            tangent.normalize();
-            const frictionImpulse = -friction * Math.abs(impulse);
-            
-            this.velocity.add(tangent.clone().multiplyScalar(frictionImpulse / this.mass));
-            other.velocity.add(tangent.clone().multiplyScalar(-frictionImpulse / other.mass));
-          }
-        }
-      }
-    } else if (!this.isStatic) {
-      this.object.position.sub(normal.clone().multiplyScalar(overlap));
-      
-      const normalVelocity = this.velocity.dot(normal);
-      
-      if (normalVelocity > 0) {
-        const restitution = Math.max(this.bounciness, other.bounciness);
-        const newNormalVelocity = -restitution * normalVelocity;
-        
-        const tangent = this.velocity.clone().sub(normal.clone().multiplyScalar(normalVelocity));
-        tangent.multiplyScalar(1 - Math.min(this.friction, other.friction));
-        
-        this.velocity.copy(tangent.add(normal.clone().multiplyScalar(newNormalVelocity)));
-      }
-    } else if (!other.isStatic) {
-      other.object.position.add(normal.clone().multiplyScalar(overlap));
-      
-      const normalVelocity = other.velocity.dot(normal.clone().negate());
-      
-      if (normalVelocity > 0) {
-        const restitution = Math.max(this.bounciness, other.bounciness);
-        const newNormalVelocity = -restitution * normalVelocity;
-        
-        const tangent = other.velocity.clone().sub(normal.clone().negate().multiplyScalar(normalVelocity));
-        tangent.multiplyScalar(1 - Math.min(this.friction, other.friction));
-        
-        other.velocity.copy(tangent.add(normal.clone().negate().multiplyScalar(newNormalVelocity)));
-      }
-    }
-  }
-  
-  _resolveSphereSphere(other, info) {
-    const direction = info.normal;
-    const overlap = info.overlap;
-    
-    if (!this.isStatic && !other.isStatic) {
-      const totalMass = this.mass + other.mass;
-      const thisRatio = other.mass / totalMass;
-      const otherRatio = this.mass / totalMass;
-      
-      this.object.position.sub(direction.clone().multiplyScalar(overlap * thisRatio));
-      other.object.position.add(direction.clone().multiplyScalar(overlap * otherRatio));
-      
-      const relativeVelocity = this.velocity.clone().sub(other.velocity);
-      const normalVelocity = relativeVelocity.dot(direction);
-      
-      if (normalVelocity > 0) {
-        const restitution = Math.max(this.bounciness, other.bounciness);
-        const impulse = -(1 + restitution) * normalVelocity * this.mass * other.mass / totalMass;
-        
-        this.velocity.add(direction.clone().multiplyScalar(impulse / this.mass));
-        other.velocity.add(direction.clone().multiplyScalar(-impulse / other.mass));
-      }
-    } else if (!this.isStatic) {
-      this.object.position.sub(direction.clone().multiplyScalar(overlap));
-      
-      const normalVelocity = this.velocity.dot(direction);
-      
-      if (normalVelocity > 0) {
-        const restitution = Math.max(this.bounciness, other.bounciness);
-        const newNormalVelocity = -restitution * normalVelocity;
-        
-        const tangent = this.velocity.clone().sub(direction.clone().multiplyScalar(normalVelocity));
-        tangent.multiplyScalar(1 - Math.min(this.friction, other.friction));
-        
-        this.velocity.copy(tangent.add(direction.clone().multiplyScalar(newNormalVelocity)));
-      }
-    } else if (!other.isStatic) {
-      other.object.position.add(direction.clone().multiplyScalar(overlap));
-      
-      const normalVelocity = other.velocity.dot(direction.clone().negate());
-      
-      if (normalVelocity > 0) {
-        const restitution = Math.max(this.bounciness, other.bounciness);
-        const newNormalVelocity = -restitution * normalVelocity;
-        
-        const tangent = other.velocity.clone().sub(direction.clone().negate().multiplyScalar(normalVelocity));
-        tangent.multiplyScalar(1 - Math.min(this.friction, other.friction));
-        
-        other.velocity.copy(tangent.add(direction.clone().negate().multiplyScalar(newNormalVelocity)));
-      }
-    }
-  }
-  
-  _resolveBoxSphere(other, info) {
-    this._resolveBoxBox(other, info);
   }
 }
 
@@ -359,6 +242,13 @@ export class CollisionManager {
     this._debugMeshes = [];
     this._scene = null;
     this.onCollision = null;
+    
+    this.maxSubSteps = 4;
+    this.maxIterations = 4;
+    this.sleepThreshold = 0.05;
+    this.sleepTimeThreshold = 0.3;
+    this.contactOffset = 0.001;
+    this.minVelocityForBounce = 1.0;
   }
   
   addCollider(object, options = {}) {
@@ -372,8 +262,8 @@ export class CollisionManager {
       isStatic: options.isStatic || false,
       isTrigger: options.isTrigger || false,
       mass: options.mass || 1,
-      bounciness: options.bounciness || 0.5,
-      friction: options.friction || 0.3
+      bounciness: options.bounciness || 0.3,
+      friction: options.friction || 0.5
     };
     
     if (colliderOptions.type === ColliderType.BOX) {
@@ -490,55 +380,62 @@ export class CollisionManager {
   }
   
   update(dt) {
-    dt = Math.min(dt, 0.016);
+    const maxDt = 1 / 60;
+    dt = Math.min(dt, maxDt * this.maxSubSteps);
     
-    for (const collider of this.colliders) {
-      collider.updateBounds();
+    let remainingTime = dt;
+    let subSteps = 0;
+    
+    while (remainingTime > 0.0001 && subSteps < this.maxSubSteps) {
+      const subDt = Math.min(remainingTime, maxDt);
+      this._subStep(subDt);
+      remainingTime -= subDt;
+      subSteps++;
     }
-    
-    for (const collider of this.colliders) {
-      if (!collider.isStatic && collider.object) {
-        if (collider.useGravity) {
-          collider.velocity.add(this.gravity.clone().multiplyScalar(dt));
-        }
-        
-        collider.object.position.add(collider.velocity.clone().multiplyScalar(dt));
-        
-        collider.object.updateMatrixWorld();
-        collider.updateBounds();
-      }
-    }
-    
-    this._collisionPairsLastFrame = new Set(this._collisionPairsThisFrame);
-    this._collisionPairsThisFrame = new Set();
-    
-    this.checkCollisions();
     
     if (this._debugMode) {
       this._updateDebugMeshes();
     }
   }
   
-  checkCollisions() {
-    for (let i = 0; i < this.colliders.length; i++) {
-      for (let j = i + 1; j < this.colliders.length; j++) {
-        const a = this.colliders[i];
-        const b = this.colliders[j];
-        
-        if (a.isStatic && b.isStatic) continue;
-        
-        const info = a.getCollisionInfo(b);
-        
-        if (info) {
-          const pairId = `${this.colliders.indexOf(a)}-${this.colliders.indexOf(b)}`;
-          this._collisionPairsThisFrame.add(pairId);
-          
-          this._triggerCollisionEvents(a, b, pairId);
-          
-          if (!a.isTrigger && !b.isTrigger) {
-            a.resolveCollision(b, info);
-          }
+  _subStep(dt) {
+    for (const collider of this.colliders) {
+      if (collider.isStatic || !collider.object) continue;
+      
+      if (collider.isSleeping) continue;
+      
+      const speedSq = collider.velocity.lengthSq();
+      if (speedSq < this.sleepThreshold * this.sleepThreshold) {
+        collider._sleepTimer += dt;
+        if (collider._sleepTimer >= this.sleepTimeThreshold) {
+          collider.isSleeping = true;
+          collider.velocity.set(0, 0, 0);
+          continue;
         }
+      } else {
+        collider._sleepTimer = 0;
+      }
+      
+      if (collider.useGravity) {
+        collider.velocity.add(this.gravity.clone().multiplyScalar(dt));
+      }
+      
+      collider.object.position.add(collider.velocity.clone().multiplyScalar(dt));
+      collider.object.updateMatrixWorld();
+      collider.updateBounds();
+    }
+    
+    this._collisionPairsLastFrame = new Set(this._collisionPairsThisFrame);
+    this._collisionPairsThisFrame = new Set();
+    
+    for (let iteration = 0; iteration < this.maxIterations; iteration++) {
+      this._resolveCollisions();
+    }
+    
+    for (const collider of this.colliders) {
+      if (!collider.isStatic && collider.object) {
+        collider.object.updateMatrixWorld();
+        collider.updateBounds();
       }
     }
     
@@ -562,6 +459,42 @@ export class CollisionManager {
           }
         }
       }
+    }
+  }
+  
+  _resolveCollisions() {
+    const collisions = [];
+    
+    for (let i = 0; i < this.colliders.length; i++) {
+      for (let j = i + 1; j < this.colliders.length; j++) {
+        const a = this.colliders[i];
+        const b = this.colliders[j];
+        
+        if (a.isStatic && b.isStatic) continue;
+        if (a.isSleeping && b.isSleeping && a.isStatic === b.isStatic) continue;
+        
+        a.updateBounds();
+        b.updateBounds();
+        
+        const info = a.getCollisionInfo(b);
+        
+        if (info && info.overlap > 0) {
+          const pairId = `${i}-${j}`;
+          this._collisionPairsThisFrame.add(pairId);
+          
+          this._triggerCollisionEvents(a, b, pairId);
+          
+          if (!a.isTrigger && !b.isTrigger) {
+            collisions.push({ a, b, info, i, j });
+          }
+        }
+      }
+    }
+    
+    collisions.sort((c1, c2) => c2.info.overlap - c1.info.overlap);
+    
+    for (const collision of collisions) {
+      this._applyCollisionResolution(collision.a, collision.b, collision.info);
     }
   }
   
@@ -592,8 +525,132 @@ export class CollisionManager {
     }
   }
   
+  _applyCollisionResolution(a, b, info) {
+    if (a.isTrigger || b.isTrigger) return;
+    
+    const normal = info.normal.clone();
+    const overlap = info.overlap + this.contactOffset;
+    
+    if (!a.isStatic && a.object) a.isSleeping = false;
+    if (!b.isStatic && b.object) b.isSleeping = false;
+    
+    if (!a.isStatic && !b.isStatic) {
+      const totalMass = a.mass + b.mass;
+      const thisRatio = b.mass / totalMass;
+      const otherRatio = a.mass / totalMass;
+      
+      a.object.position.sub(normal.clone().multiplyScalar(overlap * thisRatio));
+      b.object.position.add(normal.clone().multiplyScalar(overlap * otherRatio));
+      
+      const relativeVelocity = a.velocity.clone().sub(b.velocity);
+      const normalVelocity = relativeVelocity.dot(normal);
+      
+      if (normalVelocity > 0.001) {
+        const restitution = Math.min(a.bounciness, b.bounciness);
+        const speed = Math.abs(normalVelocity);
+        
+        if (speed > this.minVelocityForBounce) {
+          const impulse = -(1 + restitution) * normalVelocity * a.mass * b.mass / totalMass;
+          
+          a.velocity.add(normal.clone().multiplyScalar(impulse / a.mass));
+          b.velocity.add(normal.clone().multiplyScalar(-impulse / b.mass));
+        } else {
+          a.velocity.sub(normal.clone().multiplyScalar(normalVelocity * thisRatio));
+          b.velocity.add(normal.clone().multiplyScalar(normalVelocity * otherRatio));
+        }
+        
+        const friction = Math.max(a.friction, b.friction);
+        if (friction > 0) {
+          const tangent = relativeVelocity.clone().sub(normal.clone().multiplyScalar(normalVelocity));
+          const tangentSpeed = tangent.length();
+          
+          if (tangentSpeed > 0.001) {
+            tangent.normalize();
+            
+            const normalImpulse = Math.abs(normalVelocity) * a.mass * b.mass / totalMass;
+            const frictionImpulse = -friction * Math.min(tangentSpeed, normalImpulse);
+            
+            a.velocity.add(tangent.clone().multiplyScalar(frictionImpulse / a.mass));
+            b.velocity.add(tangent.clone().multiplyScalar(-frictionImpulse / b.mass));
+          }
+        }
+      }
+    } else if (!a.isStatic && a.object) {
+      a.object.position.sub(normal.clone().multiplyScalar(overlap));
+      
+      const normalVelocity = a.velocity.dot(normal);
+      
+      if (normalVelocity > 0.001) {
+        const restitution = Math.min(a.bounciness, b.bounciness);
+        const speed = Math.abs(normalVelocity);
+        
+        if (speed > this.minVelocityForBounce) {
+          const newNormalVelocity = -restitution * normalVelocity;
+          
+          const tangent = a.velocity.clone().sub(normal.clone().multiplyScalar(normalVelocity));
+          tangent.multiplyScalar(1 - Math.max(a.friction, b.friction));
+          
+          a.velocity.copy(tangent.add(normal.clone().multiplyScalar(newNormalVelocity)));
+        } else {
+          a.velocity.sub(normal.clone().multiplyScalar(normalVelocity));
+          
+          const tangent = a.velocity.clone();
+          tangent.multiplyScalar(1 - Math.max(a.friction, b.friction));
+          
+          a.velocity.copy(tangent);
+        }
+      } else if (normalVelocity >= 0) {
+        a.velocity.sub(normal.clone().multiplyScalar(normalVelocity));
+        
+        const friction = Math.max(a.friction, b.friction);
+        if (friction > 0) {
+          a.velocity.multiplyScalar(1 - friction * 0.5);
+        }
+      }
+    } else if (!b.isStatic && b.object) {
+      const negNormal = normal.clone().negate();
+      b.object.position.add(normal.clone().multiplyScalar(overlap));
+      
+      const normalVelocity = b.velocity.dot(negNormal);
+      
+      if (normalVelocity > 0.001) {
+        const restitution = Math.min(a.bounciness, b.bounciness);
+        const speed = Math.abs(normalVelocity);
+        
+        if (speed > this.minVelocityForBounce) {
+          const newNormalVelocity = -restitution * normalVelocity;
+          
+          const tangent = b.velocity.clone().sub(negNormal.clone().multiplyScalar(normalVelocity));
+          tangent.multiplyScalar(1 - Math.max(a.friction, b.friction));
+          
+          b.velocity.copy(tangent.add(negNormal.clone().multiplyScalar(newNormalVelocity)));
+        } else {
+          b.velocity.sub(negNormal.clone().multiplyScalar(normalVelocity));
+          
+          const tangent = b.velocity.clone();
+          tangent.multiplyScalar(1 - Math.max(a.friction, b.friction));
+          
+          b.velocity.copy(tangent);
+        }
+      } else if (normalVelocity >= 0) {
+        b.velocity.sub(negNormal.clone().multiplyScalar(normalVelocity));
+        
+        const friction = Math.max(a.friction, b.friction);
+        if (friction > 0) {
+          b.velocity.multiplyScalar(1 - friction * 0.5);
+        }
+      }
+    }
+    
+    if (a.object) a.object.updateMatrixWorld();
+    if (b.object) b.object.updateMatrixWorld();
+    a.updateBounds();
+    b.updateBounds();
+  }
+  
   clear() {
     this.colliders = [];
+    this._objectToCollider.clear();
     this._collisionPairsThisFrame.clear();
     this._collisionPairsLastFrame.clear();
   }
@@ -608,8 +665,8 @@ export function createBoxCollider(object, options = {}) {
     isStatic: options.isStatic || false,
     isTrigger: options.isTrigger || false,
     mass: options.mass || 1,
-    bounciness: options.bounciness || 0.5,
-    friction: options.friction || 0.3
+    bounciness: options.bounciness || 0.3,
+    friction: options.friction || 0.5
   });
 }
 
@@ -622,8 +679,8 @@ export function createSphereCollider(object, options = {}) {
     isStatic: options.isStatic || false,
     isTrigger: options.isTrigger || false,
     mass: options.mass || 1,
-    bounciness: options.bounciness || 0.5,
-    friction: options.friction || 0.3
+    bounciness: options.bounciness || 0.3,
+    friction: options.friction || 0.5
   });
 }
 
@@ -637,7 +694,7 @@ export function createCapsuleCollider(object, options = {}) {
     isStatic: options.isStatic || false,
     isTrigger: options.isTrigger || false,
     mass: options.mass || 1,
-    bounciness: options.bounciness || 0.5,
-    friction: options.friction || 0.3
+    bounciness: options.bounciness || 0.3,
+    friction: options.friction || 0.5
   });
 }

@@ -65,23 +65,41 @@ export class Collider {
   updateBounds() {
     if (!this.object) return;
     
+    this.object.updateMatrixWorld(true);
     const worldMatrix = this.object.matrixWorld;
-    this._worldCenter.copy(this.center).applyMatrix4(worldMatrix);
+    
+    const scale = new THREE.Vector3();
+    this.object.matrixWorld.decompose(new THREE.Vector3(), new THREE.Quaternion(), scale);
+    
+    const scaledCenter = this.center.clone().multiply(scale);
+    this._worldCenter.copy(scaledCenter).add(this.object.position);
     
     if (this.type === ColliderType.BOX) {
-      const min = new THREE.Vector3(
-        this._worldCenter.x - this.size.x / 2,
-        this._worldCenter.y - this.size.y / 2,
-        this._worldCenter.z - this.size.z / 2
-      );
-      const max = new THREE.Vector3(
-        this._worldCenter.x + this.size.x / 2,
-        this._worldCenter.y + this.size.y / 2,
-        this._worldCenter.z + this.size.z / 2
-      );
-      this._boundingBox.set(min, max);
+      const scaledSize = this.size.clone().multiply(scale);
+      
+      const halfSize = scaledSize.clone().multiplyScalar(0.5);
+      const worldPos = this._worldCenter.clone();
+      
+      const rotation = new THREE.Quaternion();
+      this.object.matrixWorld.decompose(new THREE.Vector3(), rotation, new THREE.Vector3());
+      
+      const corners = [
+        new THREE.Vector3(-halfSize.x, -halfSize.y, -halfSize.z),
+        new THREE.Vector3(halfSize.x, -halfSize.y, -halfSize.z),
+        new THREE.Vector3(-halfSize.x, halfSize.y, -halfSize.z),
+        new THREE.Vector3(halfSize.x, halfSize.y, -halfSize.z),
+        new THREE.Vector3(-halfSize.x, -halfSize.y, halfSize.z),
+        new THREE.Vector3(halfSize.x, -halfSize.y, halfSize.z),
+        new THREE.Vector3(-halfSize.x, halfSize.y, halfSize.z),
+        new THREE.Vector3(halfSize.x, halfSize.y, halfSize.z)
+      ];
+      
+      const worldCorners = corners.map(c => c.applyQuaternion(rotation).add(worldPos));
+      
+      this._boundingBox.setFromPoints(worldCorners);
     } else if (this.type === ColliderType.SPHERE) {
-      this._boundingSphere.set(this._worldCenter.clone(), this.radius);
+      const maxScale = Math.max(scale.x, Math.max(scale.y, scale.z));
+      this._boundingSphere.set(this._worldCenter.clone(), this.radius * maxScale);
     }
   }
   
@@ -422,6 +440,17 @@ export class CollisionManager {
       const collider = mesh._collider;
       if (collider && collider.object) {
         mesh.position.copy(collider.getWorldCenter());
+        mesh.quaternion.copy(collider.object.quaternion);
+        
+        const scale = new THREE.Vector3();
+        collider.object.matrixWorld.decompose(new THREE.Vector3(), new THREE.Quaternion(), scale);
+        
+        if (collider.type === ColliderType.SPHERE) {
+          const maxScale = Math.max(scale.x, Math.max(scale.y, scale.z));
+          mesh.scale.set(maxScale, maxScale, maxScale);
+        } else {
+          mesh.scale.copy(scale);
+        }
       }
     }
   }

@@ -324,6 +324,7 @@ class MiniGameEngine {
     this.setupColliderPropertyListeners();
     this.setupKeyboardListeners();
     this.setupPanelListeners();
+    this.setupSceneSettingsListeners();
     this.setupContextMenuListeners();
   }
 
@@ -983,6 +984,166 @@ class MiniGameEngine {
         }
       });
     });
+
+    const tabProperties = document.getElementById('tab-properties');
+    const tabScene = document.getElementById('tab-scene');
+    const panelProperties = document.getElementById('panel-content-properties');
+    const panelScene = document.getElementById('panel-content-scene');
+    
+    if (tabProperties) {
+      tabProperties.addEventListener('click', () => {
+        this.audioManager.playClick();
+        tabProperties.classList.add('active');
+        if (tabScene) tabScene.classList.remove('active');
+        if (panelProperties) panelProperties.style.display = 'block';
+        if (panelScene) panelScene.style.display = 'none';
+      });
+    }
+    
+    if (tabScene) {
+      tabScene.addEventListener('click', () => {
+        this.audioManager.playClick();
+        tabScene.classList.add('active');
+        if (tabProperties) tabProperties.classList.remove('active');
+        if (panelScene) panelScene.style.display = 'block';
+        if (panelProperties) panelProperties.style.display = 'none';
+        
+        this.updateSceneSettingsUI();
+      });
+    }
+  }
+
+  updateSceneSettingsUI() {
+    const skyboxInfo = this.sceneManager.getSkyboxInfo();
+    
+    const skyboxEnabled = document.getElementById('skybox-enabled');
+    if (skyboxEnabled) {
+      skyboxEnabled.checked = skyboxInfo.enabled;
+    }
+    
+    const skyboxType = document.getElementById('skybox-type');
+    if (skyboxType) {
+      skyboxType.value = skyboxInfo.type;
+      this._updateSkyboxTypeUI(skyboxInfo.type);
+    }
+    
+    const skyboxColor = document.getElementById('skybox-color');
+    if (skyboxColor) {
+      skyboxColor.value = skyboxInfo.color1;
+    }
+    
+    const skyboxColor1 = document.getElementById('skybox-color1');
+    if (skyboxColor1) {
+      skyboxColor1.value = skyboxInfo.color1;
+    }
+    
+    const skyboxColor2 = document.getElementById('skybox-color2');
+    if (skyboxColor2) {
+      skyboxColor2.value = skyboxInfo.color2;
+    }
+    
+    this._updateSkyboxPreviews();
+  }
+
+  _updateSkyboxTypeUI(type) {
+    const colorRow = document.getElementById('skybox-color-row');
+    const gradientRow = document.getElementById('skybox-gradient-row');
+    const gradient2Row = document.getElementById('skybox-gradient2-row');
+    const textureRow = document.getElementById('skybox-texture-row');
+    
+    if (colorRow) colorRow.style.display = type === 'color' ? 'flex' : 'none';
+    if (gradientRow) gradientRow.style.display = type === 'gradient' ? 'flex' : 'none';
+    if (gradient2Row) gradient2Row.style.display = type === 'gradient' ? 'flex' : 'none';
+    if (textureRow) textureRow.style.display = (type === 'cube' || type === 'equirectangular') ? 'flex' : 'none';
+  }
+
+  _updateSkyboxPreviews() {
+    const color = document.getElementById('skybox-color');
+    const colorPreview = document.getElementById('skybox-color-preview');
+    if (color && colorPreview) {
+      colorPreview.style.backgroundColor = color.value;
+    }
+    
+    const color1 = document.getElementById('skybox-color1');
+    const color1Preview = document.getElementById('skybox-color1-preview');
+    if (color1 && color1Preview) {
+      color1Preview.style.backgroundColor = color1.value;
+    }
+    
+    const color2 = document.getElementById('skybox-color2');
+    const color2Preview = document.getElementById('skybox-color2-preview');
+    if (color2 && color2Preview) {
+      color2Preview.style.backgroundColor = color2.value;
+    }
+  }
+
+  setupSceneSettingsListeners() {
+    const skyboxEnabled = document.getElementById('skybox-enabled');
+    if (skyboxEnabled) {
+      skyboxEnabled.addEventListener('change', (e) => {
+        this.sceneManager.setSkyboxEnabled(e.target.checked);
+        this.logToConsole(`天空盒已${e.target.checked ? '启用' : '禁用'}`, 'info');
+      });
+    }
+    
+    const skyboxType = document.getElementById('skybox-type');
+    if (skyboxType) {
+      skyboxType.addEventListener('change', (e) => {
+        this.sceneManager.setSkyboxType(e.target.value);
+        this._updateSkyboxTypeUI(e.target.value);
+        this.logToConsole(`天空盒类型: ${e.target.value}`, 'info');
+      });
+    }
+    
+    const skyboxColor = document.getElementById('skybox-color');
+    if (skyboxColor) {
+      skyboxColor.addEventListener('input', (e) => {
+        const preview = document.getElementById('skybox-color-preview');
+        if (preview) {
+          preview.style.backgroundColor = e.target.value;
+        }
+        
+        const color = parseInt(e.target.value.replace('#', ''), 16);
+        this.sceneManager.setSkyboxColors(color, undefined);
+      });
+    }
+    
+    const skyboxColor1 = document.getElementById('skybox-color1');
+    if (skyboxColor1) {
+      skyboxColor1.addEventListener('input', (e) => {
+        const preview = document.getElementById('skybox-color1-preview');
+        if (preview) {
+          preview.style.backgroundColor = e.target.value;
+        }
+        
+        const color = parseInt(e.target.value.replace('#', ''), 16);
+        this.sceneManager.setSkyboxColors(color, undefined);
+      });
+    }
+    
+    const skyboxColor2 = document.getElementById('skybox-color2');
+    if (skyboxColor2) {
+      skyboxColor2.addEventListener('input', (e) => {
+        const preview = document.getElementById('skybox-color2-preview');
+        if (preview) {
+          preview.style.backgroundColor = e.target.value;
+        }
+        
+        const color = parseInt(e.target.value.replace('#', ''), 16);
+        this.sceneManager.setSkyboxColors(undefined, color);
+      });
+    }
+
+    const gridEnabled = document.getElementById('grid-enabled');
+    if (gridEnabled) {
+      gridEnabled.addEventListener('change', (e) => {
+        const gridHelper = this.sceneManager.scene.getObjectByName('网格');
+        if (gridHelper) {
+          gridHelper.visible = e.target.checked;
+        }
+        this.logToConsole(`网格已${e.target.checked ? '显示' : '隐藏'}`, 'info');
+      });
+    }
   }
 
   onMenuClick(menu) {
@@ -1667,6 +1828,7 @@ class MiniGameEngine {
     console.log('Starting execution...');
     if (this.sceneManager) {
       this.sceneManager.enablePhysics();
+      this.sceneManager.hideEditorControls();
     }
     const currentMode = document.getElementById('current-mode');
     if (currentMode) currentMode.textContent = '游戏模式';
@@ -1676,6 +1838,7 @@ class MiniGameEngine {
     console.log('Stopping execution...');
     if (this.sceneManager) {
       this.sceneManager.disablePhysics();
+      this.sceneManager.showEditorControls();
     }
     const currentMode = document.getElementById('current-mode');
     if (currentMode) currentMode.textContent = '编辑模式';

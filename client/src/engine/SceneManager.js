@@ -39,6 +39,14 @@ export class SceneManager {
       { name: '玻璃', color: '#88ccff', roughness: 0.1, metalness: 0.0, transparent: true, opacity: 0.3 },
     ];
     
+    this.skyboxEnabled = true;
+    this.skyboxType = 'color';
+    this.skyboxColor1 = 0x1a1a2e;
+    this.skyboxColor2 = 0x16213e;
+    this.skyboxMesh = null;
+    this.skyboxTexture = null;
+    this.skyboxEquirectangularTexture = null;
+    
     this.init();
   }
 
@@ -86,6 +94,7 @@ export class SceneManager {
 
       this.setupLighting();
       this.setupGround();
+      this.setupSkybox();
       this.setupEventListeners();
       this.animate();
       
@@ -149,6 +158,156 @@ export class SceneManager {
     const gridHelper = new THREE.GridHelper(30, 30, 0x444444, 0x222222);
     gridHelper.name = '网格';
     this.scene.add(gridHelper);
+  }
+
+  setupSkybox() {
+    this.updateSkybox();
+  }
+
+  updateSkybox() {
+    this._clearSkybox();
+    
+    if (!this.skyboxEnabled) {
+      this.scene.background = null;
+      return;
+    }
+    
+    switch (this.skyboxType) {
+      case 'color':
+        this.scene.background = new THREE.Color(this.skyboxColor1);
+        break;
+        
+      case 'gradient':
+        this._createGradientSkybox();
+        break;
+        
+      case 'cube':
+        this.scene.background = this.skyboxTexture;
+        break;
+        
+      case 'equirectangular':
+        this.scene.background = this.skyboxEquirectangularTexture;
+        break;
+        
+      default:
+        this.scene.background = new THREE.Color(this.skyboxColor1);
+    }
+  }
+
+  _clearSkybox() {
+    if (this.skyboxMesh) {
+      this.scene.remove(this.skyboxMesh);
+      if (this.skyboxMesh.geometry) {
+        this.skyboxMesh.geometry.dispose();
+      }
+      if (this.skyboxMesh.material) {
+        if (Array.isArray(this.skyboxMesh.material)) {
+          this.skyboxMesh.material.forEach(m => m.dispose());
+        } else {
+          this.skyboxMesh.material.dispose();
+        }
+      }
+      this.skyboxMesh = null;
+    }
+  }
+
+  _createGradientSkybox() {
+    const skyGeometry = new THREE.SphereGeometry(500, 32, 32);
+    const skyMaterial = new THREE.ShaderMaterial({
+      uniforms: {
+        topColor: { value: new THREE.Color(this.skyboxColor1) },
+        bottomColor: { value: new THREE.Color(this.skyboxColor2) },
+        offset: { value: 33 },
+        exponent: { value: 0.6 }
+      },
+      vertexShader: `
+        varying vec3 vWorldPosition;
+        void main() {
+          vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+          vWorldPosition = worldPosition.xyz;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 topColor;
+        uniform vec3 bottomColor;
+        uniform float offset;
+        uniform float exponent;
+        varying vec3 vWorldPosition;
+        void main() {
+          float h = normalize(vWorldPosition + offset).y;
+          gl_FragColor = vec4(mix(bottomColor, topColor, max(pow(max(h, 0.0), exponent), 0.0)), 1.0);
+        }
+      `,
+      side: THREE.BackSide
+    });
+    
+    this.skyboxMesh = new THREE.Mesh(skyGeometry, skyMaterial);
+    this.scene.add(this.skyboxMesh);
+  }
+
+  setSkyboxEnabled(enabled) {
+    this.skyboxEnabled = enabled;
+    this.updateSkybox();
+  }
+
+  setSkyboxType(type) {
+    this.skyboxType = type;
+    this.updateSkybox();
+  }
+
+  setSkyboxColors(color1, color2) {
+    if (color1 !== undefined) {
+      this.skyboxColor1 = color1;
+    }
+    if (color2 !== undefined) {
+      this.skyboxColor2 = color2;
+    }
+    this.updateSkybox();
+  }
+
+  loadCubeMapTexture(urls) {
+    const loader = new THREE.CubeTextureLoader();
+    loader.load(
+      urls,
+      (texture) => {
+        this.skyboxTexture = texture;
+        if (this.skyboxType === 'cube') {
+          this.updateSkybox();
+        }
+      },
+      undefined,
+      (error) => {
+        console.error('加载立方体贴图失败:', error);
+      }
+    );
+  }
+
+  loadEquirectangularTexture(url) {
+    const loader = new THREE.TextureLoader();
+    loader.load(
+      url,
+      (texture) => {
+        texture.mapping = THREE.EquirectangularReflectionMapping;
+        this.skyboxEquirectangularTexture = texture;
+        if (this.skyboxType === 'equirectangular') {
+          this.updateSkybox();
+        }
+      },
+      undefined,
+      (error) => {
+        console.error('加载全景图失败:', error);
+      }
+    );
+  }
+
+  getSkyboxInfo() {
+    return {
+      enabled: this.skyboxEnabled,
+      type: this.skyboxType,
+      color1: '#' + new THREE.Color(this.skyboxColor1).getHexString(),
+      color2: '#' + new THREE.Color(this.skyboxColor2).getHexString()
+    };
   }
 
   createDefaultObjects() {
@@ -752,6 +911,14 @@ export class SceneManager {
   }
 
   onObjectChange() {
+    if (this.selectedObject) {
+      this.selectedObject.updateMatrixWorld();
+      const collider = this.getCollider(this.selectedObject);
+      if (collider) {
+        collider.updateBounds();
+      }
+    }
+    
     if (this.onChange) {
       this.onChange();
     }
@@ -831,6 +998,10 @@ export class SceneManager {
       this.collisionManager.update(deltaTime);
     }
     
+    if (this.skyboxMesh && this.camera) {
+      this.skyboxMesh.position.copy(this.camera.position);
+    }
+    
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
   }
@@ -872,6 +1043,26 @@ export class SceneManager {
   disablePhysics() {
     this.physicsEnabled = false;
     console.log('Physics disabled');
+  }
+
+  hideEditorControls() {
+    if (this.transformControls) {
+      this.transformControls.visible = false;
+    }
+    const gridHelper = this.scene.getObjectByName('网格');
+    if (gridHelper) {
+      gridHelper.visible = false;
+    }
+  }
+
+  showEditorControls() {
+    if (this.transformControls) {
+      this.transformControls.visible = true;
+    }
+    const gridHelper = this.scene.getObjectByName('网格');
+    if (gridHelper) {
+      gridHelper.visible = true;
+    }
   }
 
   togglePhysics() {

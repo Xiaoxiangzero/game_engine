@@ -289,10 +289,12 @@ export class SceneManager {
   }
 
   createPointLight(options = {}) {
+    const distance = options.distance || 20;
     const light = new THREE.PointLight(
       options.color || 0xffffff,
       options.intensity || 1.0,
-      options.distance || 20
+      distance,
+      options.decay || 2.0
     );
     light.position.copy(options.position || new THREE.Vector3(0, 2, 0));
     light.name = options.name || '点光源_' + this.objectIdCounter++;
@@ -302,8 +304,9 @@ export class SceneManager {
     light.shadow.mapSize.width = 1024;
     light.shadow.mapSize.height = 1024;
     light.shadow.camera.near = 0.5;
-    light.shadow.camera.far = 50;
-    light.shadow.bias = -0.0001;
+    light.shadow.camera.far = distance;
+    light.shadow.bias = -0.001;
+    light.shadow.normalBias = 0.02;
     
     const lightGeometry = new THREE.SphereGeometry(0.2, 16, 16);
     const lightMaterial = new THREE.MeshBasicMaterial({
@@ -527,6 +530,29 @@ export class SceneManager {
     }
   }
 
+  updateLightProperties(obj, properties) {
+    if (!obj || !obj.isLight) return;
+    
+    if (properties.intensity !== undefined) {
+      obj.intensity = properties.intensity;
+    }
+    if (properties.color !== undefined) {
+      obj.color.set(properties.color);
+    }
+    if (properties.distance !== undefined && obj.type === 'PointLight') {
+      obj.distance = properties.distance;
+      if (obj.shadow) {
+        obj.shadow.camera.far = properties.distance;
+      }
+    }
+    if (properties.decay !== undefined && obj.type === 'PointLight') {
+      obj.decay = properties.decay;
+    }
+    if (properties.castShadow !== undefined && obj.shadow) {
+      obj.castShadow = properties.castShadow;
+    }
+  }
+
   setTool(tool) {
     this.currentTool = tool;
     
@@ -694,6 +720,15 @@ export class SceneManager {
         intensity: obj.intensity || 1,
         color: '#' + (obj.color ? obj.color.getHexString() : 'ffffff')
       };
+      
+      if (obj.type === 'PointLight') {
+        info.light.distance = obj.distance || 0;
+        info.light.decay = obj.decay || 2;
+      }
+      
+      if (obj.castShadow !== undefined) {
+        info.light.castShadow = obj.castShadow;
+      }
     }
     
     return info;

@@ -363,6 +363,33 @@ class MiniGameEngine {
         }
       });
     }
+
+    const lightRange = document.getElementById('light-range');
+    if (lightRange) {
+      lightRange.addEventListener('change', (e) => {
+        if (this.sceneManager.selectedObject && this.sceneManager.selectedObject.isLight) {
+          this.sceneManager.updateLightProperties(
+            this.sceneManager.selectedObject,
+            { distance: parseFloat(e.target.value) || 20 }
+          );
+          this.logToConsole(`灯光范围已设置为: ${e.target.value}`, 'info');
+        }
+      });
+    }
+
+    const lightShadow = document.getElementById('light-shadow');
+    if (lightShadow) {
+      lightShadow.addEventListener('change', (e) => {
+        if (this.sceneManager.selectedObject && this.sceneManager.selectedObject.isLight) {
+          const castShadow = e.target.value === 'true';
+          this.sceneManager.updateLightProperties(
+            this.sceneManager.selectedObject,
+            { castShadow: castShadow }
+          );
+          this.logToConsole(`灯光阴影已${castShadow ? '启用' : '禁用'}`, 'info');
+        }
+      });
+    }
   }
 
   setupColliderPropertyListeners() {
@@ -847,6 +874,16 @@ class MiniGameEngine {
         const lightColorPreview = document.getElementById('light-color-preview');
         if (lightColor) lightColor.value = info.light.color;
         if (lightColorPreview) lightColorPreview.style.backgroundColor = info.light.color;
+        
+        const lightRange = document.getElementById('light-range');
+        if (lightRange && info.light.distance !== undefined) {
+          lightRange.value = info.light.distance;
+        }
+        
+        const lightShadow = document.getElementById('light-shadow');
+        if (lightShadow && info.light.castShadow !== undefined) {
+          lightShadow.value = info.light.castShadow ? 'true' : 'false';
+        }
       } else {
         sectionLight.style.display = 'none';
       }

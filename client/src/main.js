@@ -133,10 +133,110 @@ class MiniGameEngine {
       case 'save-scene-as':
         this.saveSceneAs();
         break;
+      case 'import-skybox':
+        this.importSkybox();
+        break;
+      case 'import-textures':
+        this.importTextures();
+        break;
+      case 'import-model':
+        this.importModel();
+        break;
       case 'export-gltf':
         this.exportGLTF();
         break;
     }
+  }
+
+  async importSkybox() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.hdr,.exr,.jpg,.jpeg,.png,.webp';
+    input.multiple = false;
+    
+    input.onchange = async (e) => {
+      const files = e.target.files;
+      if (!files || files.length === 0) return;
+      
+      try {
+        this.logToConsole('正在导入天空盒...', 'info');
+        const result = await this.sceneManager.importSkyboxFromFile(files[0]);
+        
+        if (result) {
+          this.logToConsole(`天空盒导入成功: ${files[0].name}`, 'success');
+          
+          if (result.lightingInfo) {
+            const info = result.lightingInfo;
+            this.logToConsole(`光照分析 - 平均亮度: ${(info.averageBrightness * 100).toFixed(0)}%, 色温: ${Math.round(info.colorTemperature)}K`, 'info');
+          }
+          
+          this.markSceneModified();
+        }
+      } catch (error) {
+        console.error('导入天空盒失败:', error);
+        this.logToConsole('导入天空盒失败: ' + error.message, 'error');
+      }
+    };
+    
+    input.click();
+  }
+
+  async importTextures() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.jpg,.jpeg,.png,.webp,.bmp,.tga';
+    input.multiple = true;
+    
+    input.onchange = async (e) => {
+      const files = e.target.files;
+      if (!files || files.length === 0) return;
+      
+      try {
+        this.logToConsole(`正在导入 ${files.length} 个纹理...`, 'info');
+        const results = await this.sceneManager.importTexturesFromFiles(Array.from(files));
+        
+        this.logToConsole(`成功导入 ${results.length} 个纹理`, 'success');
+        for (const result of results) {
+          this.logToConsole(`  - ${result.data.name} (${result.data.type})`, 'info');
+        }
+        
+        this.markSceneModified();
+      } catch (error) {
+        console.error('导入纹理失败:', error);
+        this.logToConsole('导入纹理失败: ' + error.message, 'error');
+      }
+    };
+    
+    input.click();
+  }
+
+  async importModel() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.gltf,.glb,.obj,.fbx,.mtl';
+    input.multiple = true;
+    
+    input.onchange = async (e) => {
+      const files = e.target.files;
+      if (!files || files.length === 0) return;
+      
+      try {
+        this.logToConsole(`正在导入模型...`, 'info');
+        const results = await this.sceneManager.importModelsFromFiles(Array.from(files));
+        
+        this.logToConsole(`成功导入 ${results.length} 个模型`, 'success');
+        for (const result of results) {
+          this.logToConsole(`  - ${result.name}`, 'info');
+        }
+        
+        this.markSceneModified();
+      } catch (error) {
+        console.error('导入模型失败:', error);
+        this.logToConsole('导入模型失败: ' + error.message, 'error');
+      }
+    };
+    
+    input.click();
   }
 
   initMaterialPresets() {
@@ -1208,7 +1308,14 @@ class MiniGameEngine {
         const contents = await file.text();
         const data = JSON.parse(contents);
         
-        if (this.sceneManager.deserializeScene(data)) {
+        let success = false;
+        if (data.version === 2.0) {
+          success = await this.sceneManager.deserializeSceneFull(data);
+        } else {
+          success = this.sceneManager.deserializeScene(data);
+        }
+        
+        if (success) {
           this.currentFileHandle = fileHandle;
           this.currentFileName = fileHandle.name;
           this.sceneModified = false;
@@ -1263,7 +1370,7 @@ class MiniGameEngine {
   async saveScene() {
     if (this.currentFileHandle && 'showSaveFilePicker' in window) {
       try {
-        const data = this.sceneManager.serializeScene();
+        const data = this.sceneManager.serializeSceneFull();
         const jsonData = JSON.stringify(data, null, 2);
         
         const writable = await this.currentFileHandle.createWritable();
@@ -1288,7 +1395,7 @@ class MiniGameEngine {
 
   async saveSceneAs() {
     try {
-      const data = this.sceneManager.serializeScene();
+      const data = this.sceneManager.serializeSceneFull();
       const jsonData = JSON.stringify(data, null, 2);
       
       if ('showSaveFilePicker' in window) {

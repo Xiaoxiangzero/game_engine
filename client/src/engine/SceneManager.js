@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
 import { CollisionManager, ColliderType, createBoxCollider, createSphereCollider } from './CollisionManager.js';
+import { ResourceManager } from './ResourceManager.js';
 
 export class SceneManager {
   constructor(container, onChangeCallback) {
@@ -46,6 +47,9 @@ export class SceneManager {
     this.skyboxMesh = null;
     this.skyboxTexture = null;
     this.skyboxEquirectangularTexture = null;
+    this.currentSkyboxId = null;
+    
+    this.resourceManager = new ResourceManager();
     
     this.init();
   }
@@ -1406,5 +1410,129 @@ export class SceneManager {
     }
     
     return newObj;
+  }
+
+  getResourceManager() {
+    return this.resourceManager;
+  }
+
+  async importSkyboxFromFile(file) {
+    const result = await this.resourceManager.importSkyboxFromFile(file, 'equirectangular');
+    if (result) {
+      this.currentSkyboxId = result.id;
+      this.resourceManager.applySkyboxToScene(result.id, this);
+    }
+    return result;
+  }
+
+  async importTexturesFromFiles(files) {
+    return await this.resourceManager.importTexturesFromFiles(files);
+  }
+
+  async importModelsFromFiles(files) {
+    const results = await this.resourceManager.loadModelFromFiles(files);
+    
+    for (const result of results) {
+      const model = result.model;
+      model.traverse((child) => {
+        if (child.isMesh) {
+          child.userData.objectType = 'imported_mesh';
+          this.objects.push(child);
+        }
+      });
+      this.scene.add(model);
+    }
+    
+    this.onChange();
+    return results;
+  }
+
+  applyMaterialToObject(materialId, object) {
+    const material = this.resourceManager.getMaterial(materialId);
+    if (!material || !object) return false;
+    
+    if (object.material) {
+      object.material.dispose();
+    }
+    
+    object.material = material.clone();
+    return true;
+  }
+
+  createMaterialForObject(object, type, options = {}) {
+    if (!object) return null;
+    
+    const result = this.resourceManager.createMaterial(type, options);
+    
+    if (object.material) {
+      object.material.dispose();
+    }
+    
+    object.material = result.material;
+    object.userData.materialId = result.data.id;
+    
+    return result;
+  }
+
+  serializeSceneFull() {
+    const baseData = this.serializeScene();
+    
+    const resources = this.resourceManager.serialize();
+    
+    const skyboxData = {
+      enabled: this.skyboxEnabled,
+      type: this.skyboxType,
+      color1: this.skyboxColor1,
+      color2: this.skyboxColor2,
+      currentSkyboxId: this.currentSkyboxId
+    };
+    
+    const materialsData = [];
+    for (const obj of this.objects) {
+      if (obj.material && obj.material.userData && obj.material.userData.materialId) {
+        materialsData.push({
+          objectId: obj.id,
+          materialId: obj.material.userData.materialId
+        });
+      }
+    }
+    
+    return {
+      ...baseData,
+      resources: resources,
+      skybox: skyboxData,
+      objectMaterials: materialsData,
+      version: 2.0
+    };
+  }
+
+  async deserializeSceneFull(data) {
+    if (data.version === 2.0) {
+      if (data.resources) {
+        await this.resourceManager.deserialize(data.resources);
+      }
+      
+      if (data.skybox) {
+        this.skyboxEnabled = data.skybox.enabled;
+        this.skyboxType = data.skybox.type;
+        this.skyboxColor1 = data.skybox.color1;
+        this.skyboxColor2 = data.skybox.color2;
+        this.currentSkyboxId = data.skybox.currentSkyboxId;
+        this.updateSkybox();
+      }
+    }
+    
+    const baseSuccess = this.deserializeScene(data);
+    
+    if (baseSuccess && data.version === 2.0 && data.objectMaterials) {
+      for (const matData of data.objectMaterials) {
+        const obj = this.getObjectById(matData.objectId);
+        if (obj) {
+          this.applyMaterialToObject(matData.materialId, obj);
+        }
+      }
+    }
+    
+    return baseSuccess;
   }
 }

@@ -298,6 +298,12 @@ export class SceneManager {
     light.name = options.name || '点光源_' + this.objectIdCounter++;
     light.userData.objectType = 'pointlight';
     light.isLight = true;
+    light.castShadow = true;
+    light.shadow.mapSize.width = 1024;
+    light.shadow.mapSize.height = 1024;
+    light.shadow.camera.near = 0.5;
+    light.shadow.camera.far = 50;
+    light.shadow.bias = -0.0001;
     
     const lightGeometry = new THREE.SphereGeometry(0.2, 16, 16);
     const lightMaterial = new THREE.MeshBasicMaterial({

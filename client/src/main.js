@@ -93,6 +93,17 @@ class MiniGameEngine {
   }
 
   setupEventListeners() {
+    const menuItems = ['file', 'edit', 'view', 'game', 'component', 'tools', 'window', 'help'];
+    menuItems.forEach(menu => {
+      const menuItem = document.getElementById(`menu-${menu}`);
+      if (menuItem) {
+        menuItem.addEventListener('click', () => {
+          this.audioManager.playClick();
+          this.onMenuClick(menu);
+        });
+      }
+    });
+
     const playBtn = document.getElementById('play-btn');
     if (playBtn) {
       playBtn.addEventListener('click', () => {
@@ -648,6 +659,21 @@ class MiniGameEngine {
         }
       });
     });
+  }
+
+  onMenuClick(menu) {
+    const menuNames = {
+      'file': '文件',
+      'edit': '编辑',
+      'view': '视图',
+      'game': '游戏',
+      'component': '组件',
+      'tools': '工具',
+      'window': '窗口',
+      'help': '帮助'
+    };
+    
+    this.logToConsole(`菜单 ${menuNames[menu] || menu} 被点击`, 'info');
   }
 
   connectToServer() {

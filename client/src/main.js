@@ -133,10 +133,110 @@ class MiniGameEngine {
       case 'save-scene-as':
         this.saveSceneAs();
         break;
+      case 'import-skybox':
+        this.importSkybox();
+        break;
+      case 'import-textures':
+        this.importTextures();
+        break;
+      case 'import-model':
+        this.importModel();
+        break;
       case 'export-gltf':
         this.exportGLTF();
         break;
     }
+  }
+
+  async importSkybox() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.hdr,.exr,.jpg,.jpeg,.png,.webp';
+    input.multiple = false;
+    
+    input.onchange = async (e) => {
+      const files = e.target.files;
+      if (!files || files.length === 0) return;
+      
+      try {
+        this.logToConsole('正在导入天空盒...', 'info');
+        const result = await this.sceneManager.importSkyboxFromFile(files[0]);
+        
+        if (result) {
+          this.logToConsole(`天空盒导入成功: ${files[0].name}`, 'success');
+          
+          if (result.lightingInfo) {
+            const info = result.lightingInfo;
+            this.logToConsole(`光照分析 - 平均亮度: ${(info.averageBrightness * 100).toFixed(0)}%, 色温: ${Math.round(info.colorTemperature)}K`, 'info');
+          }
+          
+          this.markSceneModified();
+        }
+      } catch (error) {
+        console.error('导入天空盒失败:', error);
+        this.logToConsole('导入天空盒失败: ' + error.message, 'error');
+      }
+    };
+    
+    input.click();
+  }
+
+  async importTextures() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.jpg,.jpeg,.png,.webp,.bmp,.tga';
+    input.multiple = true;
+    
+    input.onchange = async (e) => {
+      const files = e.target.files;
+      if (!files || files.length === 0) return;
+      
+      try {
+        this.logToConsole(`正在导入 ${files.length} 个纹理...`, 'info');
+        const results = await this.sceneManager.importTexturesFromFiles(Array.from(files));
+        
+        this.logToConsole(`成功导入 ${results.length} 个纹理`, 'success');
+        for (const result of results) {
+          this.logToConsole(`  - ${result.data.name} (${result.data.type})`, 'info');
+        }
+        
+        this.markSceneModified();
+      } catch (error) {
+        console.error('导入纹理失败:', error);
+        this.logToConsole('导入纹理失败: ' + error.message, 'error');
+      }
+    };
+    
+    input.click();
+  }
+
+  async importModel() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.gltf,.glb,.obj,.fbx,.mtl';
+    input.multiple = true;
+    
+    input.onchange = async (e) => {
+      const files = e.target.files;
+      if (!files || files.length === 0) return;
+      
+      try {
+        this.logToConsole(`正在导入模型...`, 'info');
+        const results = await this.sceneManager.importModelsFromFiles(Array.from(files));
+        
+        this.logToConsole(`成功导入 ${results.length} 个模型`, 'success');
+        for (const result of results) {
+          this.logToConsole(`  - ${result.name}`, 'info');
+        }
+        
+        this.markSceneModified();
+      } catch (error) {
+        console.error('导入模型失败:', error);
+        this.logToConsole('导入模型失败: ' + error.message, 'error');
+      }
+    };
+    
+    input.click();
   }
 
   initMaterialPresets() {
@@ -324,7 +424,273 @@ class MiniGameEngine {
     this.setupColliderPropertyListeners();
     this.setupKeyboardListeners();
     this.setupPanelListeners();
+    this.setupSceneSettingsListeners();
     this.setupContextMenuListeners();
+    this.setupTextureImportListeners();
+  }
+
+  setupTextureImportListeners() {
+    const textureTypes = [
+      { id: 'albedo', type: 'map' },
+      { id: 'normal', type: 'normal' },
+      { id: 'metalness', type: 'metalness' },
+      { id: 'roughness', type: 'roughness' },
+      { id: 'metalrough', type: 'metalRoughness' },
+      { id: 'ao', type: 'ao' },
+      { id: 'emissive', type: 'emissive' }
+    ];
+
+    textureTypes.forEach(({ id, type }) => {
+      const loadBtn = document.getElementById(`btn-load-${id}`);
+      const clearBtn = document.getElementById(`btn-clear-${id}`);
+      
+      if (loadBtn) {
+        loadBtn.addEventListener('click', () => {
+          this.audioManager.playClick();
+          this._loadTextureForSelected(type, id);
+        });
+      }
+      
+      if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+          this.audioManager.playClick();
+          this._clearTextureForSelected(type, id);
+        });
+      }
+    });
+
+    const normalStrength = document.getElementById('normal-strength');
+    if (normalStrength) {
+      normalStrength.addEventListener('input', (e) => {
+        const value = parseFloat(e.target.value);
+        const valueEl = document.getElementById('normal-strength-value');
+        if (valueEl) valueEl.textContent = value.toFixed(1);
+        
+        if (this.sceneManager.selectedObject && this.sceneManager.selectedObject.material) {
+          if (this.sceneManager.selectedObject.material.normalScale) {
+            this.sceneManager.selectedObject.material.normalScale.set(value, value);
+          }
+        }
+      });
+    }
+
+    const aoStrength = document.getElementById('ao-strength');
+    if (aoStrength) {
+      aoStrength.addEventListener('input', (e) => {
+        const value = parseFloat(e.target.value);
+        const valueEl = document.getElementById('ao-strength-value');
+        if (valueEl) valueEl.textContent = value.toFixed(1);
+        
+        if (this.sceneManager.selectedObject && this.sceneManager.selectedObject.material) {
+          this.sceneManager.selectedObject.material.aoMapIntensity = value;
+        }
+      });
+    }
+
+    const emissiveColor = document.getElementById('emissive-color');
+    if (emissiveColor) {
+      emissiveColor.addEventListener('input', (e) => {
+        if (this.sceneManager.selectedObject && this.sceneManager.selectedObject.material) {
+          this.sceneManager.selectedObject.material.emissive.set(e.target.value);
+          const preview = document.getElementById('emissive-color-preview');
+          if (preview) preview.style.backgroundColor = e.target.value;
+        }
+      });
+    }
+
+    const emissiveStrength = document.getElementById('emissive-strength');
+    if (emissiveStrength) {
+      emissiveStrength.addEventListener('input', (e) => {
+        const value = parseFloat(e.target.value);
+        const valueEl = document.getElementById('emissive-strength-value');
+        if (valueEl) valueEl.textContent = value.toFixed(1);
+        
+        if (this.sceneManager.selectedObject && this.sceneManager.selectedObject.material) {
+          this.sceneManager.selectedObject.material.emissiveIntensity = value;
+        }
+      });
+    }
+
+    const skyboxLoadBtn = document.getElementById('btn-load-skybox-file');
+    if (skyboxLoadBtn) {
+      skyboxLoadBtn.addEventListener('click', () => {
+        this.audioManager.playClick();
+        this.importSkybox();
+      });
+    }
+
+    const applySkyboxLightingBtn = document.getElementById('btn-apply-skybox-lighting');
+    if (applySkyboxLightingBtn) {
+      applySkyboxLightingBtn.addEventListener('click', () => {
+        this.audioManager.playClick();
+        this._applySkyboxLighting();
+      });
+    }
+
+    const resImportBtn = document.getElementById('btn-import');
+    if (resImportBtn) {
+      resImportBtn.addEventListener('click', () => {
+        this.audioManager.playClick();
+        this.importTextures();
+      });
+    }
+  }
+
+  _loadTextureForSelected(textureType, previewId) {
+    if (!this.sceneManager.selectedObject) {
+      this.logToConsole('请先选择一个物体', 'warn');
+      return;
+    }
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.jpg,.jpeg,.png,.webp,.bmp,.tga';
+    
+    input.onchange = async (e) => {
+      const files = e.target.files;
+      if (!files || files.length === 0) return;
+
+      try {
+        this.logToConsole(`正在加载贴图...`, 'info');
+        const texture = await this.sceneManager.setMaterialTexture(
+          this.sceneManager.selectedObject,
+          textureType,
+          files[0]
+        );
+        
+        this.logToConsole(`贴图加载成功: ${files[0].name}`, 'success');
+        this._updateTexturePreview(previewId, texture);
+        this.markSceneModified();
+      } catch (error) {
+        console.error('加载贴图失败:', error);
+        this.logToConsole('加载贴图失败: ' + error.message, 'error');
+      }
+    };
+    
+    input.click();
+  }
+
+  _clearTextureForSelected(textureType, previewId) {
+    if (!this.sceneManager.selectedObject) {
+      this.logToConsole('请先选择一个物体', 'warn');
+      return;
+    }
+
+    const cleared = this.sceneManager.clearMaterialTexture(
+      this.sceneManager.selectedObject,
+      textureType
+    );
+
+    if (cleared) {
+      this.logToConsole(`贴图已清除`, 'info');
+      this._updateTexturePreview(previewId, null);
+      this.markSceneModified();
+    }
+  }
+
+  _updateTexturePreview(previewId, texture) {
+    const preview = document.getElementById(`${previewId}-preview`);
+    if (!preview) return;
+
+    if (texture) {
+      const previewUrl = this.sceneManager.getTexturePreviewUrl(texture);
+      if (previewUrl) {
+        preview.style.backgroundImage = `url(${previewUrl})`;
+        preview.style.backgroundSize = 'cover';
+        preview.style.backgroundPosition = 'center';
+        preview.textContent = '';
+      }
+    } else {
+      preview.style.backgroundImage = '';
+      preview.textContent = '无贴图';
+    }
+  }
+
+  _applySkyboxLighting() {
+    if (!this.sceneManager.currentSkyboxId) {
+      this.logToConsole('请先导入天空盒', 'warn');
+      return;
+    }
+
+    const resourceManager = this.sceneManager.getResourceManager();
+    const lightingInfo = resourceManager.getSkyboxLightingInfo(this.sceneManager.currentSkyboxId);
+    
+    if (!lightingInfo) {
+      this.logToConsole('无法获取天空盒光照信息', 'error');
+      return;
+    }
+
+    let ambientLight = null;
+    let directionalLight = null;
+
+    this.sceneManager.scene.traverse((obj) => {
+      if (obj.isAmbientLight) ambientLight = obj;
+      if (obj.isDirectionalLight) directionalLight = obj;
+    });
+
+    const intensity = Math.max(0.3, Math.min(2.0, lightingInfo.averageBrightness * 1.5));
+
+    if (ambientLight) {
+      ambientLight.intensity = intensity;
+    }
+
+    if (directionalLight) {
+      directionalLight.position.set(
+        lightingInfo.dominantDirection.x * 10,
+        Math.max(3, Math.abs(lightingInfo.dominantDirection.y * 10)),
+        lightingInfo.dominantDirection.z * 10
+      );
+    }
+
+    this.logToConsole(`已应用天空盒光照 - 亮度: ${(intensity * 100).toFixed(0)}%, 色温: ${Math.round(lightingInfo.colorTemperature)}K`, 'success');
+  }
+
+  _updateMaterialTexturePreviews() {
+    if (!this.sceneManager.selectedObject || !this.sceneManager.selectedObject.material) return;
+    
+    const material = this.sceneManager.selectedObject.material;
+    
+    const previewIds = [
+      { id: 'albedo', texture: material.map },
+      { id: 'normal', texture: material.normalMap },
+      { id: 'metalness', texture: material.metalnessMap },
+      { id: 'roughness', texture: material.roughnessMap },
+      { id: 'ao', texture: material.aoMap },
+      { id: 'emissive', texture: material.emissiveMap }
+    ];
+    
+    previewIds.forEach(({ id, texture }) => {
+      this._updateTexturePreview(id, texture);
+    });
+
+    if (material.normalScale) {
+      const normalStrength = document.getElementById('normal-strength');
+      const normalStrengthValue = document.getElementById('normal-strength-value');
+      if (normalStrength) normalStrength.value = material.normalScale.x;
+      if (normalStrengthValue) normalStrengthValue.textContent = material.normalScale.x.toFixed(1);
+    }
+    
+    if (material.aoMapIntensity !== undefined) {
+      const aoStrength = document.getElementById('ao-strength');
+      const aoStrengthValue = document.getElementById('ao-strength-value');
+      if (aoStrength) aoStrength.value = material.aoMapIntensity;
+      if (aoStrengthValue) aoStrengthValue.textContent = material.aoMapIntensity.toFixed(1);
+    }
+    
+    if (material.emissive) {
+      const emissiveColor = document.getElementById('emissive-color');
+      const emissiveColorPreview = document.getElementById('emissive-color-preview');
+      const colorHex = '#' + material.emissive.getHexString();
+      if (emissiveColor) emissiveColor.value = colorHex;
+      if (emissiveColorPreview) emissiveColorPreview.style.backgroundColor = colorHex;
+    }
+    
+    if (material.emissiveIntensity !== undefined) {
+      const emissiveStrength = document.getElementById('emissive-strength');
+      const emissiveStrengthValue = document.getElementById('emissive-strength-value');
+      if (emissiveStrength) emissiveStrength.value = material.emissiveIntensity;
+      if (emissiveStrengthValue) emissiveStrengthValue.textContent = material.emissiveIntensity.toFixed(1);
+    }
   }
 
   setupContextMenuListeners() {
@@ -983,6 +1349,166 @@ class MiniGameEngine {
         }
       });
     });
+
+    const tabProperties = document.getElementById('tab-properties');
+    const tabScene = document.getElementById('tab-scene');
+    const panelProperties = document.getElementById('panel-content-properties');
+    const panelScene = document.getElementById('panel-content-scene');
+    
+    if (tabProperties) {
+      tabProperties.addEventListener('click', () => {
+        this.audioManager.playClick();
+        tabProperties.classList.add('active');
+        if (tabScene) tabScene.classList.remove('active');
+        if (panelProperties) panelProperties.style.display = 'block';
+        if (panelScene) panelScene.style.display = 'none';
+      });
+    }
+    
+    if (tabScene) {
+      tabScene.addEventListener('click', () => {
+        this.audioManager.playClick();
+        tabScene.classList.add('active');
+        if (tabProperties) tabProperties.classList.remove('active');
+        if (panelScene) panelScene.style.display = 'block';
+        if (panelProperties) panelProperties.style.display = 'none';
+        
+        this.updateSceneSettingsUI();
+      });
+    }
+  }
+
+  updateSceneSettingsUI() {
+    const skyboxInfo = this.sceneManager.getSkyboxInfo();
+    
+    const skyboxEnabled = document.getElementById('skybox-enabled');
+    if (skyboxEnabled) {
+      skyboxEnabled.checked = skyboxInfo.enabled;
+    }
+    
+    const skyboxType = document.getElementById('skybox-type');
+    if (skyboxType) {
+      skyboxType.value = skyboxInfo.type;
+      this._updateSkyboxTypeUI(skyboxInfo.type);
+    }
+    
+    const skyboxColor = document.getElementById('skybox-color');
+    if (skyboxColor) {
+      skyboxColor.value = skyboxInfo.color1;
+    }
+    
+    const skyboxColor1 = document.getElementById('skybox-color1');
+    if (skyboxColor1) {
+      skyboxColor1.value = skyboxInfo.color1;
+    }
+    
+    const skyboxColor2 = document.getElementById('skybox-color2');
+    if (skyboxColor2) {
+      skyboxColor2.value = skyboxInfo.color2;
+    }
+    
+    this._updateSkyboxPreviews();
+  }
+
+  _updateSkyboxTypeUI(type) {
+    const colorRow = document.getElementById('skybox-color-row');
+    const gradientRow = document.getElementById('skybox-gradient-row');
+    const gradient2Row = document.getElementById('skybox-gradient2-row');
+    const textureRow = document.getElementById('skybox-texture-row');
+    
+    if (colorRow) colorRow.style.display = type === 'color' ? 'flex' : 'none';
+    if (gradientRow) gradientRow.style.display = type === 'gradient' ? 'flex' : 'none';
+    if (gradient2Row) gradient2Row.style.display = type === 'gradient' ? 'flex' : 'none';
+    if (textureRow) textureRow.style.display = (type === 'cube' || type === 'equirectangular') ? 'flex' : 'none';
+  }
+
+  _updateSkyboxPreviews() {
+    const color = document.getElementById('skybox-color');
+    const colorPreview = document.getElementById('skybox-color-preview');
+    if (color && colorPreview) {
+      colorPreview.style.backgroundColor = color.value;
+    }
+    
+    const color1 = document.getElementById('skybox-color1');
+    const color1Preview = document.getElementById('skybox-color1-preview');
+    if (color1 && color1Preview) {
+      color1Preview.style.backgroundColor = color1.value;
+    }
+    
+    const color2 = document.getElementById('skybox-color2');
+    const color2Preview = document.getElementById('skybox-color2-preview');
+    if (color2 && color2Preview) {
+      color2Preview.style.backgroundColor = color2.value;
+    }
+  }
+
+  setupSceneSettingsListeners() {
+    const skyboxEnabled = document.getElementById('skybox-enabled');
+    if (skyboxEnabled) {
+      skyboxEnabled.addEventListener('change', (e) => {
+        this.sceneManager.setSkyboxEnabled(e.target.checked);
+        this.logToConsole(`天空盒已${e.target.checked ? '启用' : '禁用'}`, 'info');
+      });
+    }
+    
+    const skyboxType = document.getElementById('skybox-type');
+    if (skyboxType) {
+      skyboxType.addEventListener('change', (e) => {
+        this.sceneManager.setSkyboxType(e.target.value);
+        this._updateSkyboxTypeUI(e.target.value);
+        this.logToConsole(`天空盒类型: ${e.target.value}`, 'info');
+      });
+    }
+    
+    const skyboxColor = document.getElementById('skybox-color');
+    if (skyboxColor) {
+      skyboxColor.addEventListener('input', (e) => {
+        const preview = document.getElementById('skybox-color-preview');
+        if (preview) {
+          preview.style.backgroundColor = e.target.value;
+        }
+        
+        const color = parseInt(e.target.value.replace('#', ''), 16);
+        this.sceneManager.setSkyboxColors(color, undefined);
+      });
+    }
+    
+    const skyboxColor1 = document.getElementById('skybox-color1');
+    if (skyboxColor1) {
+      skyboxColor1.addEventListener('input', (e) => {
+        const preview = document.getElementById('skybox-color1-preview');
+        if (preview) {
+          preview.style.backgroundColor = e.target.value;
+        }
+        
+        const color = parseInt(e.target.value.replace('#', ''), 16);
+        this.sceneManager.setSkyboxColors(color, undefined);
+      });
+    }
+    
+    const skyboxColor2 = document.getElementById('skybox-color2');
+    if (skyboxColor2) {
+      skyboxColor2.addEventListener('input', (e) => {
+        const preview = document.getElementById('skybox-color2-preview');
+        if (preview) {
+          preview.style.backgroundColor = e.target.value;
+        }
+        
+        const color = parseInt(e.target.value.replace('#', ''), 16);
+        this.sceneManager.setSkyboxColors(undefined, color);
+      });
+    }
+
+    const gridEnabled = document.getElementById('grid-enabled');
+    if (gridEnabled) {
+      gridEnabled.addEventListener('change', (e) => {
+        const gridHelper = this.sceneManager.scene.getObjectByName('网格');
+        if (gridHelper) {
+          gridHelper.visible = e.target.checked;
+        }
+        this.logToConsole(`网格已${e.target.checked ? '显示' : '隐藏'}`, 'info');
+      });
+    }
   }
 
   onMenuClick(menu) {
@@ -1047,7 +1573,14 @@ class MiniGameEngine {
         const contents = await file.text();
         const data = JSON.parse(contents);
         
-        if (this.sceneManager.deserializeScene(data)) {
+        let success = false;
+        if (data.version === 2.0) {
+          success = await this.sceneManager.deserializeSceneFull(data);
+        } else {
+          success = this.sceneManager.deserializeScene(data);
+        }
+        
+        if (success) {
           this.currentFileHandle = fileHandle;
           this.currentFileName = fileHandle.name;
           this.sceneModified = false;
@@ -1102,7 +1635,7 @@ class MiniGameEngine {
   async saveScene() {
     if (this.currentFileHandle && 'showSaveFilePicker' in window) {
       try {
-        const data = this.sceneManager.serializeScene();
+        const data = this.sceneManager.serializeSceneFull();
         const jsonData = JSON.stringify(data, null, 2);
         
         const writable = await this.currentFileHandle.createWritable();
@@ -1127,7 +1660,7 @@ class MiniGameEngine {
 
   async saveSceneAs() {
     try {
-      const data = this.sceneManager.serializeScene();
+      const data = this.sceneManager.serializeSceneFull();
       const jsonData = JSON.stringify(data, null, 2);
       
       if ('showSaveFilePicker' in window) {
@@ -1401,6 +1934,8 @@ class MiniGameEngine {
         const opacityValue = document.getElementById('opacity-value');
         if (materialOpacity) materialOpacity.value = info.material.opacity;
         if (opacityValue) opacityValue.textContent = info.material.opacity.toFixed(2);
+
+        this._updateMaterialTexturePreviews();
       } else {
         sectionMaterial.style.display = 'none';
       }
@@ -1667,6 +2202,7 @@ class MiniGameEngine {
     console.log('Starting execution...');
     if (this.sceneManager) {
       this.sceneManager.enablePhysics();
+      this.sceneManager.hideEditorControls();
     }
     const currentMode = document.getElementById('current-mode');
     if (currentMode) currentMode.textContent = '游戏模式';
@@ -1676,6 +2212,7 @@ class MiniGameEngine {
     console.log('Stopping execution...');
     if (this.sceneManager) {
       this.sceneManager.disablePhysics();
+      this.sceneManager.showEditorControls();
     }
     const currentMode = document.getElementById('current-mode');
     if (currentMode) currentMode.textContent = '编辑模式';

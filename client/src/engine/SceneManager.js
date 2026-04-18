@@ -212,26 +212,38 @@ export class SceneManager {
   }
 
   _createGradientSkybox() {
-    const canvas = document.createElement('canvas');
-    canvas.width = 4;
-    canvas.height = 256;
+    const skyGeometry = new THREE.SphereGeometry(500, 32, 32);
+    const skyMaterial = new THREE.ShaderMaterial({
+      uniforms: {
+        topColor: { value: new THREE.Color(this.skyboxColor1) },
+        bottomColor: { value: new THREE.Color(this.skyboxColor2) },
+        offset: { value: 33 },
+        exponent: { value: 0.6 }
+      },
+      vertexShader: `
+        varying vec3 vWorldPosition;
+        void main() {
+          vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+          vWorldPosition = worldPosition.xyz;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 topColor;
+        uniform vec3 bottomColor;
+        uniform float offset;
+        uniform float exponent;
+        varying vec3 vWorldPosition;
+        void main() {
+          float h = normalize(vWorldPosition + offset).y;
+          gl_FragColor = vec4(mix(bottomColor, topColor, max(pow(max(h, 0.0), exponent), 0.0)), 1.0);
+        }
+      `,
+      side: THREE.BackSide
+    });
     
-    const ctx = canvas.getContext('2d');
-    const gradient = ctx.createLinearGradient(0, 0, 0, 256);
-    
-    const color1 = new THREE.Color(this.skyboxColor1);
-    const color2 = new THREE.Color(this.skyboxColor2);
-    
-    gradient.addColorStop(0, '#' + color1.getHexString());
-    gradient.addColorStop(1, '#' + color2.getHexString());
-    
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, 4, 256);
-    
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.needsUpdate = true;
-    
-    this.scene.background = texture;
+    this.skyboxMesh = new THREE.Mesh(skyGeometry, skyMaterial);
+    this.scene.add(this.skyboxMesh);
   }
 
   setSkyboxEnabled(enabled) {
@@ -986,6 +998,10 @@ export class SceneManager {
       this.collisionManager.update(deltaTime);
     }
     
+    if (this.skyboxMesh && this.camera) {
+      this.skyboxMesh.position.copy(this.camera.position);
+    }
+    
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
   }
@@ -1027,6 +1043,26 @@ export class SceneManager {
   disablePhysics() {
     this.physicsEnabled = false;
     console.log('Physics disabled');
+  }
+
+  hideEditorControls() {
+    if (this.transformControls) {
+      this.transformControls.visible = false;
+    }
+    const gridHelper = this.scene.getObjectByName('网格');
+    if (gridHelper) {
+      gridHelper.visible = false;
+    }
+  }
+
+  showEditorControls() {
+    if (this.transformControls) {
+      this.transformControls.visible = true;
+    }
+    const gridHelper = this.scene.getObjectByName('网格');
+    if (gridHelper) {
+      gridHelper.visible = true;
+    }
   }
 
   togglePhysics() {

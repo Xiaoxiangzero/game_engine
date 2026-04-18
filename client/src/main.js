@@ -1828,6 +1828,7 @@ class MiniGameEngine {
     console.log('Starting execution...');
     if (this.sceneManager) {
       this.sceneManager.enablePhysics();
+      this.sceneManager.hideEditorControls();
     }
     const currentMode = document.getElementById('current-mode');
     if (currentMode) currentMode.textContent = '游戏模式';
@@ -1837,6 +1838,7 @@ class MiniGameEngine {
     console.log('Stopping execution...');
     if (this.sceneManager) {
       this.sceneManager.disablePhysics();
+      this.sceneManager.showEditorControls();
     }
     const currentMode = document.getElementById('current-mode');
     if (currentMode) currentMode.textContent = '编辑模式';

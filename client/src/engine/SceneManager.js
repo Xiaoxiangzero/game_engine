@@ -275,6 +275,14 @@ export class SceneManager {
     
     this.scene.add(mesh);
     this.objects.push(mesh);
+    
+    this.addColliderToObject(mesh, {
+      type: ColliderType.BOX,
+      size: new THREE.Vector3(2, 0.01, 2),
+      isStatic: options.isStatic || false,
+      isTrigger: options.isTrigger || false
+    });
+    
     this.onChange();
     
     return mesh;

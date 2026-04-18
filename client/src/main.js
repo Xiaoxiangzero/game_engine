@@ -390,6 +390,7 @@ class MiniGameEngine {
               }
             );
             
+            this.updatePropertyPanel();
             this.logToConsole(`碰撞体类型已更改为: ${newType}`, 'info');
           }
         }
@@ -515,6 +516,77 @@ class MiniGameEngine {
         }
       });
     }
+
+    const addComponentBtn = document.getElementById('btn-add-component');
+    if (addComponentBtn) {
+      addComponentBtn.addEventListener('click', () => {
+        if (this.sceneManager.selectedObject) {
+          this.addColliderToSelectedObject();
+        }
+      });
+    }
+
+    const removeColliderBtn = document.getElementById('btn-remove-collider');
+    if (removeColliderBtn) {
+      removeColliderBtn.addEventListener('click', () => {
+        if (this.sceneManager.selectedObject) {
+          this.removeColliderFromSelectedObject();
+        }
+      });
+    }
+  }
+
+  addColliderToSelectedObject() {
+    if (!this.sceneManager.selectedObject) return;
+
+    const obj = this.sceneManager.selectedObject;
+    const existingCollider = this.sceneManager.getCollider(obj);
+    
+    if (existingCollider) {
+      this.logToConsole('该物体已经有碰撞体', 'warning');
+      return;
+    }
+
+    let colliderType = 'box';
+    let options = {};
+
+    const objectType = obj.userData.objectType;
+    switch (objectType) {
+      case 'sphere':
+        colliderType = 'sphere';
+        options = { radius: 0.5 };
+        break;
+      case 'cylinder':
+        colliderType = 'capsule';
+        options = { radius: 0.5, height: 1 };
+        break;
+      case 'plane':
+        colliderType = 'box';
+        options = { size: new THREE.Vector3(2, 0.01, 2) };
+        break;
+      default:
+        options = { size: new THREE.Vector3(1, 1, 1) };
+    }
+
+    this.sceneManager.setObjectColliderType(obj, colliderType, options);
+    this.updatePropertyPanel();
+    this.logToConsole(`已为物体添加 ${colliderType} 碰撞体`, 'info');
+  }
+
+  removeColliderFromSelectedObject() {
+    if (!this.sceneManager.selectedObject) return;
+
+    const obj = this.sceneManager.selectedObject;
+    const collider = this.sceneManager.getCollider(obj);
+    
+    if (!collider) {
+      this.logToConsole('该物体没有碰撞体', 'warning');
+      return;
+    }
+
+    this.sceneManager.removeCollider(obj);
+    this.updatePropertyPanel();
+    this.logToConsole('已移除物体的碰撞体', 'info');
   }
 
   setupKeyboardListeners() {
@@ -806,10 +878,16 @@ class MiniGameEngine {
     if (colliderCenterX) colliderCenterX.value = collider.center.x.toFixed(2);
     if (colliderCenterY) colliderCenterY.value = collider.center.y.toFixed(2);
     if (colliderCenterZ) colliderCenterZ.value = collider.center.z.toFixed(2);
-    if (colliderSizeX) colliderSizeX.value = collider.size.x.toFixed(2);
-    if (colliderSizeY) colliderSizeY.value = collider.size.y.toFixed(2);
-    if (colliderSizeZ) colliderSizeZ.value = collider.size.z.toFixed(2);
-    if (colliderRadius) colliderRadius.value = collider.radius.toFixed(2);
+    
+    if (collider.type === 'box' && collider.size) {
+      if (colliderSizeX) colliderSizeX.value = collider.size.x.toFixed(2);
+      if (colliderSizeY) colliderSizeY.value = collider.size.y.toFixed(2);
+      if (colliderSizeZ) colliderSizeZ.value = collider.size.z.toFixed(2);
+    }
+    
+    if ((collider.type === 'sphere' || collider.type === 'capsule') && collider.radius !== undefined) {
+      if (colliderRadius) colliderRadius.value = collider.radius.toFixed(2);
+    }
     
     const sizeRow = document.getElementById('collider-size-row');
     const radiusRow = document.getElementById('collider-radius-row');

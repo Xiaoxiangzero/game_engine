@@ -1053,4 +1053,167 @@ export class SceneManager {
   hideContextMenus() {
     this._hideAllContextMenus();
   }
+
+  serializeScene() {
+    const data = {
+      version: 1.0,
+      timestamp: Date.now(),
+      camera: {
+        position: this.camera.position.clone(),
+        target: this.controls.target.clone(),
+        fov: this.camera.fov,
+        near: this.camera.near,
+        far: this.camera.far
+      },
+      objects: []
+    };
+    
+    for (const obj of this.objects) {
+      if (obj.isGround || obj.name === '网格') continue;
+      
+      const objData = this.copyObjectToClipboard(obj);
+      if (objData) {
+        data.objects.push(objData);
+      }
+    }
+    
+    return data;
+  }
+
+  deserializeScene(data) {
+    if (!data || !data.objects) return false;
+    
+    this.clearScene(false);
+    
+    for (const objData of data.objects) {
+      const newObj = this._createObjectFromData(objData);
+      if (newObj) {
+        newObj.rotation.copy(objData.rotation);
+        newObj.scale.copy(objData.scale);
+        
+        if (objData.material && newObj.material) {
+          if (objData.material.color) {
+            newObj.material.color.set(objData.material.color);
+          }
+          if (objData.material.roughness !== undefined) {
+            newObj.material.roughness = objData.material.roughness;
+          }
+          if (objData.material.metalness !== undefined) {
+            newObj.material.metalness = objData.material.metalness;
+          }
+          if (objData.material.opacity !== undefined) {
+            newObj.material.opacity = objData.material.opacity;
+          }
+          if (objData.material.transparent !== undefined) {
+            newObj.material.transparent = objData.material.transparent;
+          }
+        }
+        
+        if (objData.light && newObj.isLight) {
+          if (objData.light.intensity !== undefined) {
+            newObj.intensity = objData.light.intensity;
+          }
+          if (objData.light.color) {
+            newObj.color.set(objData.light.color);
+          }
+          if (objData.light.distance !== undefined) {
+            newObj.distance = objData.light.distance;
+          }
+          if (objData.light.decay !== undefined) {
+            newObj.decay = objData.light.decay;
+          }
+        }
+      }
+    }
+    
+    if (data.camera) {
+      if (data.camera.position) {
+        this.camera.position.copy(data.camera.position);
+      }
+      if (data.camera.target) {
+        this.controls.target.copy(data.camera.target);
+      }
+      if (data.camera.fov !== undefined) {
+        this.camera.fov = data.camera.fov;
+      }
+      this.controls.update();
+    }
+    
+    this.onChange();
+    return true;
+  }
+
+  clearScene(keepDefaultObjects = true) {
+    const objectsToRemove = [];
+    
+    for (const obj of this.objects) {
+      if (keepDefaultObjects && (obj.isGround || obj.name === '网格')) {
+        continue;
+      }
+      objectsToRemove.push(obj);
+    }
+    
+    for (const obj of objectsToRemove) {
+      this.removeObject(obj);
+    }
+    
+    this.deselectObject();
+    this.onChange();
+  }
+
+  _createObjectFromData(data) {
+    if (!data || !data.objectType) return null;
+    
+    const options = {
+      position: data.position,
+      name: data.name
+    };
+    
+    let newObj = null;
+    const type = data.objectType;
+    
+    switch (type) {
+      case 'cube':
+        newObj = this.createCube(options);
+        break;
+      case 'sphere':
+        newObj = this.createSphere(options);
+        break;
+      case 'cylinder':
+        newObj = this.createCylinder(options);
+        break;
+      case 'plane':
+        newObj = this.createPlane(options);
+        break;
+      case 'pointlight':
+        newObj = this.createPointLight(options);
+        break;
+      default:
+        return null;
+    }
+    
+    if (newObj && data.collider) {
+      this.removeCollider(newObj);
+      
+      const colliderOpts = { ...data.collider };
+      if (colliderOpts.center) {
+        colliderOpts.center = new THREE.Vector3(
+          colliderOpts.center.x,
+          colliderOpts.center.y,
+          colliderOpts.center.z
+        );
+      }
+      if (colliderOpts.size) {
+        colliderOpts.size = new THREE.Vector3(
+          colliderOpts.size.x,
+          colliderOpts.size.y,
+          colliderOpts.size.z
+        );
+      }
+      
+      this.addColliderToObject(newObj, colliderOpts);
+    }
+    
+    return newObj;
+  }
 }

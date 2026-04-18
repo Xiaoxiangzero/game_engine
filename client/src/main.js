@@ -18,6 +18,10 @@ class MiniGameEngine {
     this.clipboard = null;
     this.clipboardAction = 'copy';
     
+    this.currentFileHandle = null;
+    this.currentFileName = '未保存的场景';
+    this.sceneModified = false;
+    
     this.init();
     this.setupEventListeners();
     this.connectToServer();
@@ -39,6 +43,100 @@ class MiniGameEngine {
     this.updateStatusBar();
     
     this.logToConsole('游戏引擎初始化完成', 'info');
+  }
+
+  setupMenuListeners() {
+    const menuItems = ['file', 'edit', 'view', 'game', 'component', 'tools', 'window', 'help'];
+    this._activeMenu = null;
+    
+    menuItems.forEach(menu => {
+      const menuItem = document.getElementById(`menu-${menu}`);
+      const dropdown = document.getElementById(`dropdown-${menu}`);
+      
+      if (menuItem) {
+        menuItem.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.audioManager.playClick();
+          
+          if (this._activeMenu === menu) {
+            this._closeAllMenus();
+          } else {
+            this._openMenu(menu, menuItem, dropdown);
+          }
+        });
+        
+        menuItem.addEventListener('mouseenter', (e) => {
+          if (this._activeMenu && this._activeMenu !== menu) {
+            this._openMenu(menu, menuItem, document.getElementById(`dropdown-${menu}`));
+          }
+        });
+      }
+    });
+    
+    const fileDropdown = document.getElementById('dropdown-file');
+    if (fileDropdown) {
+      fileDropdown.querySelectorAll('.menu-dropdown-item[data-action]').forEach(item => {
+        item.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const action = item.dataset.action;
+          this._handleFileMenuAction(action);
+        });
+      });
+    }
+    
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.menu-item') && !e.target.closest('.menu-dropdown')) {
+        this._closeAllMenus();
+      }
+    });
+  }
+
+  _openMenu(menuName, menuItem, dropdown) {
+    this._closeAllMenus();
+    
+    if (dropdown) {
+      const rect = menuItem.getBoundingClientRect();
+      dropdown.style.left = rect.left + 'px';
+      dropdown.style.top = rect.bottom + 'px';
+      dropdown.classList.add('visible');
+      menuItem.classList.add('active');
+      this._activeMenu = menuName;
+    } else {
+      this.onMenuClick(menuName);
+    }
+  }
+
+  _closeAllMenus() {
+    document.querySelectorAll('.menu-dropdown.visible').forEach(dropdown => {
+      dropdown.classList.remove('visible');
+    });
+    document.querySelectorAll('.menu-item.active').forEach(item => {
+      item.classList.remove('active');
+    });
+    this._activeMenu = null;
+  }
+
+  _handleFileMenuAction(action) {
+    this._closeAllMenus();
+    this.audioManager.playClick();
+    
+    switch (action) {
+      case 'new-scene':
+        this.newScene();
+        break;
+      case 'open-scene':
+        this.openScene();
+        break;
+      case 'save-scene':
+        this.saveScene();
+        break;
+      case 'save-scene-as':
+        this.saveSceneAs();
+        break;
+      case 'export-gltf':
+        this.exportGLTF();
+        break;
+    }
   }
 
   initMaterialPresets() {
@@ -95,17 +193,8 @@ class MiniGameEngine {
   }
 
   setupEventListeners() {
-    const menuItems = ['file', 'edit', 'view', 'game', 'component', 'tools', 'window', 'help'];
-    menuItems.forEach(menu => {
-      const menuItem = document.getElementById(`menu-${menu}`);
-      if (menuItem) {
-        menuItem.addEventListener('click', () => {
-          this.audioManager.playClick();
-          this.onMenuClick(menu);
-        });
-      }
-    });
-
+    this.setupMenuListeners();
+    
     const playBtn = document.getElementById('play-btn');
     if (playBtn) {
       playBtn.addEventListener('click', () => {
@@ -847,6 +936,28 @@ class MiniGameEngine {
           e.preventDefault();
           this.togglePlay();
           break;
+        case 'n':
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            this.newScene();
+          }
+          break;
+        case 'o':
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            this.openScene();
+          }
+          break;
+        case 's':
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            if (e.shiftKey) {
+              this.saveSceneAs();
+            } else {
+              this.saveScene();
+            }
+          }
+          break;
       }
     });
   }
@@ -887,6 +998,257 @@ class MiniGameEngine {
     };
     
     this.logToConsole(`菜单 ${menuNames[menu] || menu} 被点击`, 'info');
+  }
+
+  async newScene() {
+    if (this.sceneModified) {
+      const result = confirm('场景已修改，是否保存当前场景？');
+      if (result) {
+        const saved = await this.saveScene();
+        if (!saved) return;
+      }
+    }
+    
+    this.sceneManager.clearScene(true);
+    this.sceneManager.createDefaultObjects();
+    this.currentFileHandle = null;
+    this.currentFileName = '未保存的场景';
+    this.sceneModified = false;
+    this.updateTitle();
+    
+    this.audioManager.playClick();
+    this.logToConsole('新建场景', 'info');
+  }
+
+  async openScene() {
+    if (this.sceneModified) {
+      const result = confirm('场景已修改，是否保存当前场景？');
+      if (result) {
+        const saved = await this.saveScene();
+        if (!saved) return;
+      }
+    }
+    
+    try {
+      if ('showOpenFilePicker' in window) {
+        const [fileHandle] = await window.showOpenFilePicker({
+          types: [
+            {
+              description: 'Scene Files',
+              accept: {
+                'application/json': ['.json', '.scene']
+              }
+            }
+          ],
+          multiple: false
+        });
+        
+        const file = await fileHandle.getFile();
+        const contents = await file.text();
+        const data = JSON.parse(contents);
+        
+        if (this.sceneManager.deserializeScene(data)) {
+          this.currentFileHandle = fileHandle;
+          this.currentFileName = fileHandle.name;
+          this.sceneModified = false;
+          this.updateTitle();
+          
+          this.audioManager.playClick();
+          this.logToConsole(`已打开场景: ${fileHandle.name}`, 'info');
+        }
+      } else {
+        this.logToConsole('您的浏览器不支持文件系统 API，请使用传统方式打开', 'warn');
+        this.openSceneLegacy();
+      }
+    } catch (error) {
+      if (error.name !== 'AbortError') {
+        console.error('打开场景失败:', error);
+        this.logToConsole('打开场景失败: ' + error.message, 'error');
+      }
+    }
+  }
+
+  openSceneLegacy() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,.scene';
+    
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      try {
+        const contents = await file.text();
+        const data = JSON.parse(contents);
+        
+        if (this.sceneManager.deserializeScene(data)) {
+          this.currentFileHandle = null;
+          this.currentFileName = file.name;
+          this.sceneModified = false;
+          this.updateTitle();
+          
+          this.audioManager.playClick();
+          this.logToConsole(`已打开场景: ${file.name}`, 'info');
+        }
+      } catch (error) {
+        console.error('打开场景失败:', error);
+        this.logToConsole('打开场景失败: ' + error.message, 'error');
+      }
+    };
+    
+    input.click();
+  }
+
+  async saveScene() {
+    if (this.currentFileHandle && 'showSaveFilePicker' in window) {
+      try {
+        const data = this.sceneManager.serializeScene();
+        const jsonData = JSON.stringify(data, null, 2);
+        
+        const writable = await this.currentFileHandle.createWritable();
+        await writable.write(jsonData);
+        await writable.close();
+        
+        this.sceneModified = false;
+        this.updateTitle();
+        
+        this.audioManager.playClick();
+        this.logToConsole(`已保存场景: ${this.currentFileName}`, 'info');
+        return true;
+      } catch (error) {
+        console.error('保存场景失败:', error);
+        this.logToConsole('保存场景失败: ' + error.message, 'error');
+        return false;
+      }
+    } else {
+      return await this.saveSceneAs();
+    }
+  }
+
+  async saveSceneAs() {
+    try {
+      const data = this.sceneManager.serializeScene();
+      const jsonData = JSON.stringify(data, null, 2);
+      
+      if ('showSaveFilePicker' in window) {
+        const fileHandle = await window.showSaveFilePicker({
+          suggestedName: this.currentFileName.replace(/\.(json|scene)$/, '') + '.scene',
+          types: [
+            {
+              description: 'Scene Files',
+              accept: {
+                'application/json': ['.json', '.scene']
+              }
+            }
+          ]
+        });
+        
+        const writable = await fileHandle.createWritable();
+        await writable.write(jsonData);
+        await writable.close();
+        
+        this.currentFileHandle = fileHandle;
+        this.currentFileName = fileHandle.name;
+        this.sceneModified = false;
+        this.updateTitle();
+        
+        this.audioManager.playClick();
+        this.logToConsole(`已保存场景: ${fileHandle.name}`, 'info');
+        return true;
+      } else {
+        this.logToConsole('您的浏览器不支持文件系统 API，使用传统下载方式', 'warn');
+        this.downloadFile(jsonData, this.currentFileName.replace(/\.(json|scene)$/, '') + '.scene', 'application/json');
+        return true;
+      }
+    } catch (error) {
+      if (error.name !== 'AbortError') {
+        console.error('保存场景失败:', error);
+        this.logToConsole('保存场景失败: ' + error.message, 'error');
+      }
+      return false;
+    }
+  }
+
+  downloadFile(content, filename, mimeType) {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  async exportGLTF() {
+    try {
+      const GLTFExporter = await import('three/addons/exporters/GLTFExporter.js');
+      const exporter = new GLTFExporter.GLTFExporter();
+      
+      const exportObjects = [];
+      for (const obj of this.sceneManager.objects) {
+        if (obj.name !== '网格') {
+          exportObjects.push(obj);
+        }
+      }
+      
+      const scene = new THREE.Scene();
+      for (const obj of exportObjects) {
+        const clone = obj.clone();
+        scene.add(clone);
+      }
+      
+      const gltf = await exporter.parseAsync(scene, {
+        trs: false,
+        onlyVisible: true,
+        binary: false,
+        maxTextureSize: 4096
+      });
+      
+      const gltfData = JSON.stringify(gltf, null, 2);
+      
+      if ('showSaveFilePicker' in window) {
+        const fileHandle = await window.showSaveFilePicker({
+          suggestedName: this.currentFileName.replace(/\.(json|scene)$/, '') + '.gltf',
+          types: [
+            {
+              description: 'GLTF Files',
+              accept: {
+                'application/json': ['.gltf']
+              }
+            }
+          ]
+        });
+        
+        const writable = await fileHandle.createWritable();
+        await writable.write(gltfData);
+        await writable.close();
+        
+        this.audioManager.playClick();
+        this.logToConsole(`已导出 glTF: ${fileHandle.name}`, 'info');
+      } else {
+        this.downloadFile(gltfData, this.currentFileName.replace(/\.(json|scene)$/, '') + '.gltf', 'application/json');
+        this.logToConsole('已导出 glTF 文件', 'info');
+      }
+    } catch (error) {
+      if (error.name !== 'AbortError') {
+        console.error('导出 glTF 失败:', error);
+        this.logToConsole('导出 glTF 失败: ' + error.message, 'error');
+      }
+    }
+  }
+
+  updateTitle() {
+    const modifiedMarker = this.sceneModified ? '*' : '';
+    document.title = `${modifiedMarker}${this.currentFileName} - Mini Game Engine`;
+  }
+
+  markSceneModified() {
+    if (!this.sceneModified) {
+      this.sceneModified = true;
+      this.updateTitle();
+    }
   }
 
   connectToServer() {
